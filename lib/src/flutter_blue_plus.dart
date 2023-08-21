@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as BLE;
-import 'package:flutter_blue_plus_windows/src/flutter_blue_plus_windows.dart';
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 class FlutterBluePlus {
   static BLE.LogLevel get logLevel {
@@ -56,7 +56,7 @@ class FlutterBluePlus {
   /// Retrieve a list of connected devices
   /// - The list includes devices connected by other apps
   /// - You must call device.connect() before these devices can be used by FlutterBluePlus
-  static Future<List<BLE.BluetoothDevice>> get connectedSystemDevices async {
+  static Future<List<BluetoothDevice>> get connectedSystemDevices async {
     if (Platform.isWindows)
       return await FlutterBluePlusWindows.connectedSystemDevices;
     return await BLE.FlutterBluePlus.connectedSystemDevices;
