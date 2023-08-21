@@ -34,14 +34,17 @@ class CounterView extends StatelessWidget {
         children: [
           FloatingActionButton(
             onPressed: () async {
-              final connected = await FlutterBluePlus.connectedSystemDevices;
+              final connected = FlutterBluePlus.turnOn();
               print(connected);
             },
             child: const Icon(Icons.add),
           ),
           const SizedBox(height: 8),
           FloatingActionButton(
-            onPressed: (){},
+            onPressed: (){
+              final connected = FlutterBluePlus.turnOff();
+              print(connected);
+            },
             child: const Icon(Icons.remove),
           ),
         ],
