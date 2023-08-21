@@ -21,7 +21,7 @@ class FlutterBluePlusWindows {
 
   static Future<String> get adapterName async {
     await _initialize();
-    return 'WindowsAdapter';
+    return 'Windows';
   }
 
   static Stream<bool> get isScanning async* {
