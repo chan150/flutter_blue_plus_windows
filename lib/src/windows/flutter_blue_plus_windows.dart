@@ -74,8 +74,28 @@ class FlutterBluePlusWindows {
   }) async* {
     await _initialize();
     await for (final s in WinBle.scanStream) {
-      print('${s.name} ${s.adStructures} ${s.rssi} ${s.timestamp}');
-      // yield BLE.ScanResult(device: device, advertisementData: , rssi: int.tryParse(s.rssi), timeStamp: timeStamp)
+      final device = BLE.BluetoothDevice(
+        remoteId: BLE.DeviceIdentifier(s.address),
+        localName: s.name,
+        type: BLE.BluetoothDeviceType.unknown,
+      );
+      final result = BLE.ScanResult(
+        device: device,
+        advertisementData: BLE.AdvertisementData(
+          localName: s.name,
+          txPowerLevel: null,
+          connectable: s.advType.contains('Connectable'),
+          manufacturerData: {},
+          serviceData: {},
+          serviceUuids:
+              s.serviceUuids.map((e) => (e as List).first as String).toList(),
+        ),
+        rssi: int.tryParse(s.rssi) ?? -100,
+        timeStamp: DateTime.fromMillisecondsSinceEpoch(
+          ((double.tryParse(s.timestamp) ?? 0) * 1000).toInt(),
+        ),
+      );
+      yield result;
     }
     // await for (final s in Stream<BLE.ScanResult>.empty()) {
     //   yield s;
