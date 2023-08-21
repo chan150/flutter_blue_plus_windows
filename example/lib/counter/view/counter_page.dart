@@ -44,17 +44,23 @@ class CounterView extends StatelessWidget {
               //   print(s);
               // }
 
+              print('1');
+              await FlutterBluePlus.startScan(timeout: Duration(seconds: 4));
+
+              print('2');
               var subscription = FlutterBluePlus.scanResults.listen((results) {
                 for (final r in results) {
                   print(
-                      '==> ${r.device} ${r.rssi} ${r.advertisementData} ${r.timeStamp}');
+                    '==> ${r.device} ${r.rssi} ${r.advertisementData} ${r.timeStamp}',
+                  );
                 }
               });
-
-              await FlutterBluePlus.startScan(timeout: Duration(seconds: 4));
+              print('3');
 
               await FlutterBluePlus.stopScan();
+              print('4');
               subscription.cancel();
+              print('5');
 
               // final connected = await FlutterBluePlus.turnOn();
               // print(connected);
