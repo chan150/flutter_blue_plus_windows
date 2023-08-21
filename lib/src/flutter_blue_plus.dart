@@ -42,7 +42,9 @@ class FlutterBluePlus {
 
   static Future<void> turnOn({int timeout = 10}) async {
     if (Platform.isWindows) {
-      WinBle.updateBluetoothState(true);
+      final a = await WinBle.getBluetoothState();
+      print(a);
+      // await WinBle.updateBluetoothState(true);
       return;
     }
     await BLE.FlutterBluePlus.turnOn(timeout: timeout);
@@ -164,7 +166,7 @@ class FlutterBluePlus {
   @Deprecated('Deprecated in Android SDK 33 with no replacement')
   static Future<void> turnOff({int timeout = 10}) async {
     if (Platform.isWindows) {
-      WinBle.updateBluetoothState(false);
+      await WinBle.updateBluetoothState(false);
       return;
     }
     await BLE.FlutterBluePlus.turnOff(timeout: timeout);
