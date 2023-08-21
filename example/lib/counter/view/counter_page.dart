@@ -45,9 +45,6 @@ class CounterView extends StatelessWidget {
               // }
 
               print('1');
-              await FlutterBluePlus.startScan(timeout: Duration(seconds: 4));
-
-              print('2');
               var subscription = FlutterBluePlus.scanResults.listen((results) {
                 for (final r in results) {
                   print(
@@ -55,6 +52,9 @@ class CounterView extends StatelessWidget {
                   );
                 }
               });
+
+              print('2');
+              await FlutterBluePlus.startScan(timeout: Duration(seconds: 4));
               print('3');
 
               await FlutterBluePlus.stopScan();

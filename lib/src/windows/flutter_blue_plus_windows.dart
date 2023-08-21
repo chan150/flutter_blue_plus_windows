@@ -1,4 +1,4 @@
-import 'package:flutter_blue_plus/flutter_blue_plus.dart' as BLE;
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:win_ble/win_ble.dart';
 import 'package:win_ble/win_file.dart';
 
@@ -40,20 +40,20 @@ class FlutterBluePlusWindows {
     await WinBle.updateBluetoothState(true);
   }
 
-  static Stream<List<BLE.ScanResult>> get scanResults async* {
+  static Stream<List<ScanResult>> get scanResults async* {
     await _initialize();
 
-    final List<BLE.ScanResult> list = [];
+    final List<ScanResult> list = [];
 
     await for (final s in WinBle.scanStream) {
-      final device = BLE.BluetoothDevice(
-        remoteId: BLE.DeviceIdentifier(s.address),
+      final device = BluetoothDevice(
+        remoteId: DeviceIdentifier(s.address),
         localName: s.name,
-        type: BLE.BluetoothDeviceType.unknown,
+        type: BluetoothDeviceType.unknown,
       );
-      final result = BLE.ScanResult(
+      final result = ScanResult(
         device: device,
-        advertisementData: BLE.AdvertisementData(
+        advertisementData: AdvertisementData(
           localName: s.name,
           txPowerLevel: null,
           connectable: s.advType.contains('Connectable'),
@@ -74,40 +74,40 @@ class FlutterBluePlusWindows {
     }
   }
 
-  static Stream<BLE.BluetoothAdapterState> get adapterState async* {
+  static Stream<BluetoothAdapterState> get adapterState async* {
     await _initialize();
-    await for (final s in Stream<BLE.BluetoothAdapterState>.empty()) {
+    await for (final s in Stream<BluetoothAdapterState>.empty()) {
       yield s;
     }
   }
 
-  static Future<List<BLE.BluetoothDevice>> get connectedSystemDevices async {
+  static Future<List<BluetoothDevice>> get connectedSystemDevices async {
     await _initialize();
     return [];
   }
 
-  static Future<List<BLE.BluetoothDevice>> get bondedDevices async {
+  static Future<List<BluetoothDevice>> get bondedDevices async {
     await _initialize();
     return [];
   }
 
-  static Stream<BLE.ScanResult> scan({
-    BLE.ScanMode scanMode = BLE.ScanMode.lowLatency,
-    List<BLE.Guid> withServices = const [],
+  static Stream<ScanResult> scan({
+    ScanMode scanMode = ScanMode.lowLatency,
+    List<Guid> withServices = const [],
     List<String> macAddresses = const [],
     Duration? timeout,
     bool allowDuplicates = false,
     bool androidUsesFineLocation = false,
   }) async* {
     await _initialize();
-    // await for (final s in Stream<BLE.ScanResult>.empty()) {
+    // await for (final s in Stream<ScanResult>.empty()) {
     //   yield s;
     // }
   }
 
   static Future<void> startScan({
-    BLE.ScanMode scanMode = BLE.ScanMode.lowLatency,
-    List<BLE.Guid> withServices = const [],
+    ScanMode scanMode = ScanMode.lowLatency,
+    List<Guid> withServices = const [],
     List<String> macAddresses = const [],
     Duration? timeout,
     bool allowDuplicates = false,
@@ -117,7 +117,7 @@ class FlutterBluePlusWindows {
     WinBle.startScanning();
 
     if (timeout != null) {
-      Future.delayed(
+      await Future.delayed(
         timeout,
         () {
           stopScan();
@@ -133,7 +133,7 @@ class FlutterBluePlusWindows {
   }
 
   /// Sets the internal FlutterBlue log level
-  static void setLogLevel(BLE.LogLevel level, {color = true}) {
+  static void setLogLevel(LogLevel level, {color = true}) {
     return;
   }
 
