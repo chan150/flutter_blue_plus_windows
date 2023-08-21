@@ -6,5 +6,3 @@
 build/
 pubspec.lock
 /.idea/
-/example/.idea/
-/example/.vscode/
