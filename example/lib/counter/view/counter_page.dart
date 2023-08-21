@@ -22,13 +22,19 @@ class CounterView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      body: StreamBuilder(
+        stream: FlutterBluePlus.isScanning,
+        builder: (context, snapshot) {
+          return Text(snapshot.data.toString());
+        },
+      ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           FloatingActionButton(
             onPressed: () async {
-              final connected = await FlutterBluePlus.adapterName;
+              final connected = await FlutterBluePlus.connectedSystemDevices;
               print(connected);
             },
             child: const Icon(Icons.add),

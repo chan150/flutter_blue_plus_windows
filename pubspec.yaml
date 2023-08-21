@@ -8,6 +8,7 @@ environment:
 
 dependencies:
   flutter_blue_plus: ^1.14.11
+  win_ble: ^1.0.1
 
 dev_dependencies:
   test: ^1.24.6

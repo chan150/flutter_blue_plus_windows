@@ -9,7 +9,7 @@ class FlutterBluePlus {
 
   /// Checks whether the device allows Bluetooth for your app
   static Future<bool> get isAvailable async {
-    if(Platform.isWindows){
+    if (Platform.isWindows) {
       return true;
     }
     return await BLE.FlutterBluePlus.isAvailable;
@@ -17,21 +17,34 @@ class FlutterBluePlus {
 
   /// Return the friendly Bluetooth name of the local Bluetooth adapter
   static Future<String> get adapterName async {
-    if(Platform.isWindows){
+    if (Platform.isWindows) {
       return 'WindowsAdapter';
     }
     return await BLE.FlutterBluePlus.adapterName;
   }
 
   // returns whether we are scanning as a stream
-  static Stream<bool> get isScanning => BLE.FlutterBluePlus.isScanning;
+  static Stream<bool> get isScanning {
+    if (Platform.isWindows) {
+      return Stream.empty();
+    }
+    return BLE.FlutterBluePlus.isScanning;
+  }
 
   // are we scanning right now?
-  static bool get isScanningNow => BLE.FlutterBluePlus.isScanningNow;
+  static bool get isScanningNow {
+    if (Platform.isWindows) {
+      return false;
+    }
+    return BLE.FlutterBluePlus.isScanningNow;
+  }
 
-  /// Turn on Bluetooth (Android only),
-  static Future<void> turnOn({int timeout = 10}) =>
-      BLE.FlutterBluePlus.turnOn(timeout: timeout);
+  static Future<void> turnOn({int timeout = 10}) async {
+    if (Platform.isWindows) {
+      return;
+    }
+    return BLE.FlutterBluePlus.turnOn(timeout: timeout);
+  }
 
   /// Returns a stream of List<ScanResult> results while a scan is in progress.
   /// - The list contains all the results since the scan started.
