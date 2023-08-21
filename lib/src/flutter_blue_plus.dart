@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as BLE;
+import 'package:flutter_blue_plus_windows/src/flutter_blue_plus_windows.dart';
 import 'package:win_ble/win_ble.dart';
 
 class FlutterBluePlus {
@@ -10,43 +11,31 @@ class FlutterBluePlus {
 
   /// Checks whether the device allows Bluetooth for your app
   static Future<bool> get isAvailable async {
-    if (Platform.isWindows) {
-      return true;
-    }
+    if (Platform.isWindows) return await FlutterBluePlusWindows.isAvailable;
     return await BLE.FlutterBluePlus.isAvailable;
   }
 
   /// Return the friendly Bluetooth name of the local Bluetooth adapter
   static Future<String> get adapterName async {
-    if (Platform.isWindows) {
-      return 'WindowsAdapter';
-    }
+    if (Platform.isWindows) return await FlutterBluePlusWindows.adapterName;
     return await BLE.FlutterBluePlus.adapterName;
   }
 
   // returns whether we are scanning as a stream
   static Stream<bool> get isScanning {
-    if (Platform.isWindows) {
-      return Stream.empty();
-    }
+    if (Platform.isWindows) return FlutterBluePlusWindows.isScanning;
     return BLE.FlutterBluePlus.isScanning;
   }
 
   // are we scanning right now?
   static bool get isScanningNow {
-    if (Platform.isWindows) {
-      return false;
-    }
+    if (Platform.isWindows) return FlutterBluePlusWindows.isScanningNow;
     return BLE.FlutterBluePlus.isScanningNow;
   }
 
   static Future<void> turnOn({int timeout = 10}) async {
-    if (Platform.isWindows) {
-      final a = await WinBle.getBluetoothState();
-      print(a);
-      // await WinBle.updateBluetoothState(true);
-      return;
-    }
+    if (Platform.isWindows)
+      return FlutterBluePlusWindows.turnOn(timeout: timeout);
     await BLE.FlutterBluePlus.turnOn(timeout: timeout);
   }
 
@@ -55,17 +44,13 @@ class FlutterBluePlus {
   /// - When a scan is first started, an empty list is emitted.
   /// - The returned stream is never closed.
   static Stream<List<BLE.ScanResult>> get scanResults {
-    if (Platform.isWindows) {
-      return Stream.empty();
-    }
+    if (Platform.isWindows) return FlutterBluePlusWindows.scanResults;
     return BLE.FlutterBluePlus.scanResults;
   }
 
   /// Gets the current state of the Bluetooth module
   static Stream<BLE.BluetoothAdapterState> get adapterState {
-    if (Platform.isWindows) {
-      return Stream.empty();
-    }
+    if (Platform.isWindows) return FlutterBluePlusWindows.adapterState;
     return BLE.FlutterBluePlus.adapterState;
   }
 
@@ -73,17 +58,14 @@ class FlutterBluePlus {
   /// - The list includes devices connected by other apps
   /// - You must call device.connect() before these devices can be used by FlutterBluePlus
   static Future<List<BLE.BluetoothDevice>> get connectedSystemDevices async {
-    if (Platform.isWindows) {
-      return [];
-    }
+    if (Platform.isWindows)
+      return await FlutterBluePlusWindows.connectedSystemDevices;
     return await BLE.FlutterBluePlus.connectedSystemDevices;
   }
 
   /// Retrieve a list of bonded devices (Android only)
   static Future<List<BLE.BluetoothDevice>> get bondedDevices async {
-    if (Platform.isWindows) {
-      return [];
-    }
+    if (Platform.isWindows) return await FlutterBluePlusWindows.bondedDevices;
     return await BLE.FlutterBluePlus.bondedDevices;
   }
 
@@ -103,7 +85,14 @@ class FlutterBluePlus {
     bool androidUsesFineLocation = false,
   }) {
     if (Platform.isWindows) {
-      return Stream.empty();
+      return FlutterBluePlusWindows.scan(
+        scanMode: scanMode,
+        withServices: withServices,
+        macAddresses: macAddresses,
+        timeout: timeout,
+        allowDuplicates: allowDuplicates,
+        androidUsesFineLocation: androidUsesFineLocation,
+      );
     }
     return BLE.FlutterBluePlus.scan(
       scanMode: scanMode,
@@ -129,9 +118,16 @@ class FlutterBluePlus {
     bool androidUsesFineLocation = false,
   }) async {
     if (Platform.isWindows) {
+      await FlutterBluePlusWindows.startScan(
+        scanMode: scanMode,
+        withServices: withServices,
+        macAddresses: macAddresses,
+        timeout: timeout,
+        allowDuplicates: allowDuplicates,
+        androidUsesFineLocation: androidUsesFineLocation,
+      );
       return;
     }
-
     await BLE.FlutterBluePlus.startScan(
       scanMode: scanMode,
       withServices: withServices,
@@ -145,16 +141,19 @@ class FlutterBluePlus {
   /// Stops a scan for Bluetooth Low Energy devices
   static Future<void> stopScan() async {
     if (Platform.isWindows) {
+      await FlutterBluePlusWindows.stopScan();
       return;
     }
     await BLE.FlutterBluePlus.stopScan();
   }
 
-  BLE.LogLevel test = BLE.LogLevel.debug;
-
   /// Sets the internal FlutterBlue log level
   static void setLogLevel(BLE.LogLevel level, {color = true}) {
     if (Platform.isWindows) {
+      FlutterBluePlusWindows.setLogLevel(
+        level,
+        color: color,
+      );
       return;
     }
     BLE.FlutterBluePlus.setLogLevel(
@@ -166,7 +165,7 @@ class FlutterBluePlus {
   @Deprecated('Deprecated in Android SDK 33 with no replacement')
   static Future<void> turnOff({int timeout = 10}) async {
     if (Platform.isWindows) {
-      await WinBle.updateBluetoothState(false);
+      FlutterBluePlusWindows.turnOff(timeout: timeout);
       return;
     }
     await BLE.FlutterBluePlus.turnOff(timeout: timeout);
