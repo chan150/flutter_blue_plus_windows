@@ -22,29 +22,18 @@ class CounterView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder(
-        stream: FlutterBluePlus.isScanning,
-        builder: (context, snapshot) {
-          return Text(snapshot.data.toString());
-        },
-      ),
+      // body: StreamBuilder(
+      //   stream: FlutterBluePlus.isScanning,
+      //   builder: (context, snapshot) {
+      //     return Text(snapshot.data.toString());
+      //   },
+      // ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           FloatingActionButton(
             onPressed: () async {
-              // final bd = BluetoothDevice.fromId('');
-              // bd.connect();
-              // await FlutterBluePlus.startScan(
-              //   timeout: const Duration(seconds: 4),
-              // );
-              // final a = FlutterBluePlus.scan();
-              // await for (final s in a) {
-              //   print(s);
-              // }
-
-              print('1');
               var subscription = FlutterBluePlus.scanResults.listen((results) {
                 for (final r in results) {
                   print(
@@ -53,15 +42,10 @@ class CounterView extends StatelessWidget {
                 }
               });
 
-              print('2');
               await FlutterBluePlus.startScan(timeout: Duration(seconds: 4));
-              print('3');
 
               await FlutterBluePlus.stopScan();
-              print('4');
               subscription.cancel();
-              print('5');
-
               // final connected = await FlutterBluePlus.turnOn();
               // print(connected);
             },

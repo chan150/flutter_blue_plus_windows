@@ -1,4 +1,4 @@
-import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'package:win_ble/win_ble.dart';
 import 'package:win_ble/win_file.dart';
 
@@ -51,25 +51,28 @@ class FlutterBluePlusWindows {
         localName: s.name,
         type: BluetoothDeviceType.unknown,
       );
+      print(s.manufacturerData);
       final result = ScanResult(
         device: device,
         advertisementData: AdvertisementData(
           localName: s.name,
           txPowerLevel: null,
-          connectable: s.advType.contains('Connectable'),
-          manufacturerData: {},
-          serviceData: {},
-          serviceUuids:
-          s.serviceUuids.map((e) => (e as List).first as String).toList(),
+          connectable: !s.advType.contains('Non'),
+          manufacturerData: {
+            if (s.manufacturerData.length >= 2)
+              s.manufacturerData[0]: s.manufacturerData.sublist(2),
+          },
+          serviceData: {
+            // s.adStructures.first.data
+          },
+          serviceUuids: s.serviceUuids.map((e) => e as String).toList(),
         ),
         rssi: int.tryParse(s.rssi) ?? -100,
-        timeStamp: DateTime.fromMillisecondsSinceEpoch(
-          ((double.tryParse(s.timestamp) ?? 0) * 100).toInt(),
-        ),
+        timeStamp: DateTime.now(),
       );
-      if(!list.map((e) => e.device.remoteId).contains(device.remoteId)){
-        list.add(result);
-      }
+      // if (!list.map((e) => e.device.remoteId).contains(device.remoteId)) {
+      list.add(result);
+      // }
       yield list;
     }
   }
