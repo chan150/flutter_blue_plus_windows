@@ -1,13 +1,27 @@
+import 'dart:io';
+
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as BLE;
 
 class FlutterBluePlus {
-  static BLE.LogLevel get logLevel => BLE.FlutterBluePlus.logLevel;
+  static BLE.LogLevel get logLevel {
+    return BLE.FlutterBluePlus.logLevel;
+  }
 
   /// Checks whether the device allows Bluetooth for your app
-  static Future<bool> get isAvailable => BLE.FlutterBluePlus.isAvailable;
+  static Future<bool> get isAvailable async {
+    if(Platform.isWindows){
+      return true;
+    }
+    return await BLE.FlutterBluePlus.isAvailable;
+  }
 
   /// Return the friendly Bluetooth name of the local Bluetooth adapter
-  static Future<String> get adapterName => BLE.FlutterBluePlus.adapterName;
+  static Future<String> get adapterName async {
+    if(Platform.isWindows){
+      return 'WindowsAdapter';
+    }
+    return await BLE.FlutterBluePlus.adapterName;
+  }
 
   // returns whether we are scanning as a stream
   static Stream<bool> get isScanning => BLE.FlutterBluePlus.isScanning;
