@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as BLE;
 import 'package:win_ble/win_ble.dart';
 import 'package:win_ble/win_file.dart';
@@ -38,8 +36,8 @@ class FlutterBluePlusWindows {
   }
 
   static Future<void> turnOn({int timeout = 10}) async {
-    final a = await WinBle.getBluetoothState();
-    print(a);
+    await _initialize();
+    await WinBle.updateBluetoothState(true);
   }
 
   static Stream<List<BLE.ScanResult>> get scanResults async* {

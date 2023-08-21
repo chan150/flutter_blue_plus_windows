@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as BLE;
 import 'package:flutter_blue_plus_windows/src/flutter_blue_plus_windows.dart';
-import 'package:win_ble/win_ble.dart';
 
 class FlutterBluePlus {
   static BLE.LogLevel get logLevel {
