@@ -75,7 +75,7 @@ class FlutterBluePlus {
   ///    - [androidUsesFineLocation] requests ACCESS_FINE_LOCATION permission at runtime regardless
   ///    of Android version. On Android 11 and below (Sdk < 31), this permission is required
   ///    and therefore we will always request it. Your AndroidManifest.xml must match.
-  static Stream<ScanResult> scan({
+  static Stream<BLE.ScanResult> scan({
     BLE.ScanMode scanMode = BLE.ScanMode.lowLatency,
     List<BLE.Guid> withServices = const [],
     List<String> macAddresses = const [],

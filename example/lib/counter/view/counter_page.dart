@@ -36,13 +36,26 @@ class CounterView extends StatelessWidget {
             onPressed: () async {
               // final bd = BluetoothDevice.fromId('');
               // bd.connect();
-              await FlutterBluePlus.startScan(
-                timeout: const Duration(seconds: 4),
-              );
-              final a = FlutterBluePlus.scan();
-              await for (final s in a) {
-                // print(s);
-              }
+              // await FlutterBluePlus.startScan(
+              //   timeout: const Duration(seconds: 4),
+              // );
+              // final a = FlutterBluePlus.scan();
+              // await for (final s in a) {
+              //   print(s);
+              // }
+
+              var subscription = FlutterBluePlus.scanResults.listen((results) {
+                for (final r in results) {
+                  print(
+                      '==> ${r.device} ${r.rssi} ${r.advertisementData} ${r.timeStamp}');
+                }
+              });
+
+              await FlutterBluePlus.startScan(timeout: Duration(seconds: 4));
+
+              await FlutterBluePlus.stopScan();
+              subscription.cancel();
+
               // final connected = await FlutterBluePlus.turnOn();
               // print(connected);
             },

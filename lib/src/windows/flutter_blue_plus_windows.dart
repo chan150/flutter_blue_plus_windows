@@ -1,5 +1,4 @@
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as BLE;
-import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'package:win_ble/win_ble.dart';
 import 'package:win_ble/win_file.dart';
 
@@ -65,7 +64,7 @@ class FlutterBluePlusWindows {
     return [];
   }
 
-  static Stream<ScanResult> scan({
+  static Stream<BLE.ScanResult> scan({
     BLE.ScanMode scanMode = BLE.ScanMode.lowLatency,
     List<BLE.Guid> withServices = const [],
     List<String> macAddresses = const [],
