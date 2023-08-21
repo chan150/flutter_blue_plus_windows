@@ -34,6 +34,8 @@ class CounterView extends StatelessWidget {
         children: [
           FloatingActionButton(
             onPressed: () async {
+              final bd = BluetoothDevice.fromId('');
+              bd.connect();
               final connected = await FlutterBluePlus.turnOn();
               // print(connected);
             },
