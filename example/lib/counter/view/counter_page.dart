@@ -34,9 +34,16 @@ class CounterView extends StatelessWidget {
         children: [
           FloatingActionButton(
             onPressed: () async {
-              final bd = BluetoothDevice.fromId('');
-              bd.connect();
-              final connected = await FlutterBluePlus.turnOn();
+              // final bd = BluetoothDevice.fromId('');
+              // bd.connect();
+              await FlutterBluePlus.startScan(
+                timeout: const Duration(seconds: 4),
+              );
+              final a = FlutterBluePlus.scan();
+              await for (final s in a) {
+                // print(s);
+              }
+              // final connected = await FlutterBluePlus.turnOn();
               // print(connected);
             },
             child: const Icon(Icons.add),
@@ -44,7 +51,8 @@ class CounterView extends StatelessWidget {
           const SizedBox(height: 8),
           FloatingActionButton(
             onPressed: () async {
-              final connected = await FlutterBluePlus.turnOff();
+              await FlutterBluePlus.stopScan();
+              // final connected = await FlutterBluePlus.turnOff();
               // print(connected);
             },
             child: const Icon(Icons.remove),

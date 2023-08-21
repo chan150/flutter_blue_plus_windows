@@ -75,7 +75,7 @@ class FlutterBluePlus {
   ///    - [androidUsesFineLocation] requests ACCESS_FINE_LOCATION permission at runtime regardless
   ///    of Android version. On Android 11 and below (Sdk < 31), this permission is required
   ///    and therefore we will always request it. Your AndroidManifest.xml must match.
-  static Stream<BLE.ScanResult> scan({
+  static Stream<ScanResult> scan({
     BLE.ScanMode scanMode = BLE.ScanMode.lowLatency,
     List<BLE.Guid> withServices = const [],
     List<String> macAddresses = const [],
@@ -172,19 +172,21 @@ class FlutterBluePlus {
 
   /// Checks if Bluetooth functionality is turned on
   @Deprecated('Use adapterState.first == BluetoothAdapterState.on instead')
-  static Future<bool> get isOn => BLE.FlutterBluePlus.isOn;
+  static Future<bool> get isOn async {
+    if (Platform.isWindows) return await FlutterBluePlusWindows.isOn;
+    return await BLE.FlutterBluePlus.isOn;
+  }
 
   @Deprecated('Use adapterName instead')
-  static Future<String> get name => BLE.FlutterBluePlus.name;
+  static Future<String> get name async => await adapterName;
 
   @Deprecated('Use adapterState instead')
-  static Stream<BLE.BluetoothAdapterState> get state =>
-      BLE.FlutterBluePlus.state;
+  static Stream<BLE.BluetoothAdapterState> get state => adapterState;
 
   @Deprecated('No longer needed, remove this from your code')
-  static void get instance => BLE.FlutterBluePlus.instance;
+  static void get instance => null;
 
   @Deprecated('Use connectedSystemDevices instead')
-  static Future<List<BLE.BluetoothDevice>> get connectedDevices =>
-      BLE.FlutterBluePlus.connectedDevices;
+  static Future<List<BLE.BluetoothDevice>> get connectedDevices async =>
+      await connectedSystemDevices;
 }

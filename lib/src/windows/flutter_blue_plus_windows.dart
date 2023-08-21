@@ -1,4 +1,5 @@
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as BLE;
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'package:win_ble/win_ble.dart';
 import 'package:win_ble/win_file.dart';
 
@@ -64,7 +65,7 @@ class FlutterBluePlusWindows {
     return [];
   }
 
-  static Stream<BLE.ScanResult> scan({
+  static Stream<ScanResult> scan({
     BLE.ScanMode scanMode = BLE.ScanMode.lowLatency,
     List<BLE.Guid> withServices = const [],
     List<String> macAddresses = const [],
@@ -73,9 +74,13 @@ class FlutterBluePlusWindows {
     bool androidUsesFineLocation = false,
   }) async* {
     await _initialize();
-    await for (final s in Stream<BLE.ScanResult>.empty()) {
-      yield s;
+    await for (final s in WinBle.scanStream) {
+      print('${s.name} ${s.adStructures} ${s.rssi} ${s.timestamp}');
+      // yield BLE.ScanResult(device: device, advertisementData: , rssi: int.tryParse(s.rssi), timeStamp: timeStamp)
     }
+    // await for (final s in Stream<BLE.ScanResult>.empty()) {
+    //   yield s;
+    // }
   }
 
   static Future<void> startScan({
@@ -87,14 +92,23 @@ class FlutterBluePlusWindows {
     bool androidUsesFineLocation = false,
   }) async {
     await _initialize();
+    WinBle.startScanning();
+
+    if (timeout != null) {
+      Future.delayed(
+        timeout,
+        () {
+          stopScan();
+        },
+      );
+    }
   }
 
   /// Stops a scan for Bluetooth Low Energy devices
   static Future<void> stopScan() async {
     await _initialize();
+    WinBle.stopScanning();
   }
-
-  BLE.LogLevel test = BLE.LogLevel.debug;
 
   /// Sets the internal FlutterBlue log level
   static void setLogLevel(BLE.LogLevel level, {color = true}) {
@@ -107,22 +121,8 @@ class FlutterBluePlusWindows {
     await WinBle.updateBluetoothState(false);
   }
 
-  /// Checks if Bluetooth functionality is turned on
-  @Deprecated('Use adapterState.first == BluetoothAdapterState.on instead')
   static Future<bool> get isOn async {
-    return true;
+    await _initialize();
+    return await WinBle.bleState.first == BleState.On;
   }
-
-  @Deprecated('Use adapterName instead')
-  static Future<String> get name async => await adapterName;
-
-  @Deprecated('Use adapterState instead')
-  static Stream<BLE.BluetoothAdapterState> get state => adapterState;
-
-  @Deprecated('No longer needed, remove this from your code')
-  static void get instance => BLE.FlutterBluePlus.instance;
-
-  @Deprecated('Use connectedSystemDevices instead')
-  static Future<List<BLE.BluetoothDevice>> get connectedDevices async =>
-      await connectedSystemDevices;
 }
