@@ -9,18 +9,14 @@ class FlutterBluePlusWindows {
       CachedStreamController(initialValue: <ScanResult>[]);
   static final _scanningController =
       CachedStreamController<bool>(initialValue: false);
-  static final _scanningStream = _scanningController.stream.asBroadcastStream();
 
-  static bool _isScanningNow = false;
+  // static final _scanningStream = _scanningController.stream;
+
+  static bool get _isScanningNow => _scanningController.latestValue;
   static bool _initialized = false;
 
   // timeout for scanning that can be cancelled by stopScan
   static Timer? _scanTimeout;
-
-  static void _setScanningStatus(bool value) {
-    _isScanningNow = value;
-    _scanningController.add(value);
-  }
 
   static Future<void> _initialize() async {
     if (_initialized) return;
@@ -43,7 +39,7 @@ class FlutterBluePlusWindows {
 
   static Stream<bool> get isScanning async* {
     await _initialize();
-    await for (final s in _scanningStream) {
+    await for (final s in _scanningController.stream) {
       yield s;
     }
   }
@@ -87,7 +83,7 @@ class FlutterBluePlusWindows {
     await _initialize();
 
     WinBle.startScanning();
-    _setScanningStatus(true);
+    _scanningController.add(true);
 
     final list = <ScanResult>[];
     _scanResultsList.add(list);
@@ -137,7 +133,8 @@ class FlutterBluePlusWindows {
 
       yield item;
     }
-
+    _scanTimeout?.cancel();
+    _scanningController.add(false);
   }
 
   static Future startScan({
@@ -166,7 +163,8 @@ class FlutterBluePlusWindows {
   static Future<void> stopScan() async {
     await _initialize();
     WinBle.stopScanning();
-    _setScanningStatus(false);
+    _scanTimeout?.cancel();
+    _scanningController.add(false);
   }
 
   /// Sets the internal FlutterBlue log level
