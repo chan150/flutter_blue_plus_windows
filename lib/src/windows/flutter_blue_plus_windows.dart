@@ -16,7 +16,6 @@ class FlutterBluePlusWindows {
     _scanningController.add(value);
   }
 
-
   static Future<void> _initialize() async {
     if (_initialized) return;
     await WinBle.initialize(
@@ -58,19 +57,24 @@ class FlutterBluePlusWindows {
     final List<ScanResult> list = [];
 
     await for (final s in WinBle.scanStream) {
-      final device = BluetoothDevice(
+      final device = BluetoothDeviceWindows(
         remoteId: DeviceIdentifier(s.address),
         localName: s.name,
         type: BluetoothDeviceType.le, // TODO: implementation missing
+        device: s,
       );
-      print('${s.adStructures?.map((e) => [e.data, e.type])} \t ${s.manufacturerData} => ${s.name}');
+      print('${s.adStructures?.map((e) => [
+            e.data,
+            e.type
+          ])} \t ${s.manufacturerData} => ${s.name}');
       final result = ScanResult(
         device: device,
         advertisementData: AdvertisementData(
           localName: s.name,
           txPowerLevel: null,
           // TODO: implementation missing
-          connectable: !s.advType.contains('Non'), // TODO: Should be validated
+          connectable: !s.advType.contains('Non'),
+          // TODO: Should be validated
           manufacturerData: {
             if (s.manufacturerData.length >= 2)
               s.manufacturerData[0]: s.manufacturerData.sublist(2),
