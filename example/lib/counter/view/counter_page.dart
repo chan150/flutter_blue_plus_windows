@@ -24,9 +24,8 @@ class CounterView extends StatelessWidget {
     return SafeArea(
       child: Scaffold(
         body: StreamBuilder(
-          stream: FlutterBluePlus.isScanning,
+          stream: FlutterBluePlus.adapterState,
           builder: (context, snapshot) {
-            print(snapshot.data);
             return Text(snapshot.data.toString());
           },
         ),
@@ -63,7 +62,7 @@ class CounterView extends StatelessWidget {
             FloatingActionButton(
               onPressed: () async {
                 await FlutterBluePlus.stopScan();
-                // final connected = await FlutterBluePlus.turnOff();
+                // final connected = await FlutterBluePlus.turnOn();
                 // print(connected);
               },
               child: const Icon(Icons.remove),

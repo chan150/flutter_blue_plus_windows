@@ -61,15 +61,16 @@ class FlutterBluePlusWindows {
       final device = BluetoothDevice(
         remoteId: DeviceIdentifier(s.address),
         localName: s.name,
-        type: BluetoothDeviceType.unknown,
+        type: BluetoothDeviceType.le, // TODO: implementation missing
       );
+      print('${s.adStructures?.map((e) => [e.data, e.type])} \t ${s.manufacturerData} => ${s.name}');
       final result = ScanResult(
         device: device,
         advertisementData: AdvertisementData(
           localName: s.name,
           txPowerLevel: null,
           // TODO: implementation missing
-          connectable: !s.advType.contains('Non'),
+          connectable: !s.advType.contains('Non'), // TODO: Should be validated
           manufacturerData: {
             if (s.manufacturerData.length >= 2)
               s.manufacturerData[0]: s.manufacturerData.sublist(2),
@@ -88,8 +89,8 @@ class FlutterBluePlusWindows {
 
   static Stream<BluetoothAdapterState> get adapterState async* {
     await _initialize();
-    await for (final s in Stream<BluetoothAdapterState>.empty()) {
-      yield s;
+    await for (final s in WinBle.bleState.asBroadcastStream()) {
+      yield s.toAdapterState();
     }
   }
 
