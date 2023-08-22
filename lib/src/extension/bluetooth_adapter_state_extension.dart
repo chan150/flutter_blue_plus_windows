@@ -1,7 +1,7 @@
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:win_ble/win_ble.dart';
 
-extension AdapterState on BleState {
+extension BluetoothAdapterStateExtension on BleState {
   BluetoothAdapterState toAdapterState() {
     switch(this){
       case BleState.On:
