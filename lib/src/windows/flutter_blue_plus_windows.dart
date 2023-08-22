@@ -5,11 +5,17 @@ import 'package:win_ble/win_ble.dart';
 import 'package:win_ble/win_file.dart';
 
 class FlutterBluePlusWindows {
-  static final _scanningController = StreamController<bool>();
+  static final _scanResultsList =
+      CachedStreamController(initialValue: <ScanResult>[]);
+  static final _scanningController =
+      CachedStreamController<bool>(initialValue: false);
   static final _scanningStream = _scanningController.stream.asBroadcastStream();
 
   static bool _isScanningNow = false;
   static bool _initialized = false;
+
+  // timeout for scanning that can be cancelled by stopScan
+  static Timer? _scanTimeout;
 
   static void _setScanningStatus(bool value) {
     _isScanningNow = value;
@@ -51,45 +57,7 @@ class FlutterBluePlusWindows {
     await WinBle.updateBluetoothState(true);
   }
 
-  static Stream<List<ScanResult>> get scanResults async* {
-    await _initialize();
-
-    final List<ScanResult> list = [];
-
-    await for (final s in WinBle.scanStream) {
-      final device = BluetoothDeviceWindows(
-        remoteId: DeviceIdentifier(s.address),
-        localName: s.name,
-        type: BluetoothDeviceType.le, // TODO: implementation missing
-        device: s,
-      );
-      print('${s.adStructures?.map((e) => [
-            e.data,
-            e.type
-          ])} \t ${s.manufacturerData} => ${s.name}');
-      final result = ScanResult(
-        device: device,
-        advertisementData: AdvertisementData(
-          localName: s.name,
-          txPowerLevel: null,
-          // TODO: implementation missing
-          connectable: !s.advType.contains('Non'),
-          // TODO: Should be validated
-          manufacturerData: {
-            if (s.manufacturerData.length >= 2)
-              s.manufacturerData[0]: s.manufacturerData.sublist(2),
-          },
-          serviceData: {},
-          // TODO: implementation missing
-          serviceUuids: s.serviceUuids.map((e) => e as String).toList(),
-        ),
-        rssi: int.parse(s.rssi),
-        timeStamp: DateTime.now(),
-      );
-      list.add(result);
-      yield list;
-    }
-  }
+  static Stream<List<ScanResult>> get scanResults => _scanResultsList.stream;
 
   static Stream<BluetoothAdapterState> get adapterState async* {
     await _initialize();
@@ -108,6 +76,42 @@ class FlutterBluePlusWindows {
     return [];
   }
 
+  //     final List<ScanResult> list = [];
+  //
+  //     await for (final s in WinBle.scanStream) {
+  //       final device = BluetoothDeviceWindows(
+  //         remoteId: DeviceIdentifier(s.address),
+  //         localName: s.name,
+  //         type: BluetoothDeviceType.le, // TODO: implementation missing
+  //         device: s,
+  //       );
+  //       print('${s.adStructures?.map((e) => [
+  //             e.data,
+  //             e.type
+  //           ])} \t ${s.manufacturerData} => ${s.name}');
+  //       final result = ScanResult(
+  //         device: device,
+  //         advertisementData: AdvertisementData(
+  //           localName: s.name,
+  //           txPowerLevel: null,
+  //           // TODO: implementation missing
+  //           connectable: !s.advType.contains('Non'),
+  //           // TODO: Should be validated
+  //           manufacturerData: {
+  //             if (s.manufacturerData.length >= 2)
+  //               s.manufacturerData[0]: s.manufacturerData.sublist(2),
+  //           },
+  //           serviceData: {},
+  //           // TODO: implementation missing
+  //           serviceUuids: s.serviceUuids.map((e) => e as String).toList(),
+  //         ),
+  //         rssi: int.parse(s.rssi),
+  //         timeStamp: DateTime.now(),
+  //       );
+  //       list.add(result);
+  //       yield list;
+  //     }
+
   static Stream<ScanResult> scan({
     ScanMode scanMode = ScanMode.lowLatency,
     List<Guid> withServices = const [],
@@ -117,12 +121,18 @@ class FlutterBluePlusWindows {
     bool androidUsesFineLocation = false,
   }) async* {
     await _initialize();
-    // await for (final s in Stream<ScanResult>.empty()) {
-    //   yield s;
-    // }
+
+    WinBle.startScanning();
+    _setScanningStatus(true);
+
+    _scanResultsList.add(<ScanResult>[]);
+
+    if (timeout != null) {
+      _scanTimeout = Timer(timeout, stopScan);
+    }
   }
 
-  static Future<void> startScan({
+  static Future startScan({
     ScanMode scanMode = ScanMode.lowLatency,
     List<Guid> withServices = const [],
     List<String> macAddresses = const [],
@@ -131,17 +141,17 @@ class FlutterBluePlusWindows {
     bool androidUsesFineLocation = false,
   }) async {
     await _initialize();
-    WinBle.startScanning();
-    _setScanningStatus(true);
 
-    if (timeout != null) {
-      await Future.delayed(
-        timeout,
-        () {
-          stopScan();
-        },
-      );
-    }
+    await scan(
+      scanMode: scanMode,
+      withServices: withServices,
+      macAddresses: macAddresses,
+      timeout: timeout,
+      allowDuplicates: allowDuplicates,
+      androidUsesFineLocation: androidUsesFineLocation,
+    ).drain();
+
+    return _scanResultsList.value;
   }
 
   /// Stops a scan for Bluetooth Low Energy devices
@@ -162,8 +172,9 @@ class FlutterBluePlusWindows {
     await WinBle.updateBluetoothState(false);
   }
 
+  // TODO: need to test
   static Future<bool> get isOn async {
     await _initialize();
-    return await WinBle.bleState.first == BleState.On;
+    return await WinBle.bleState.asBroadcastStream().first == BleState.On;
   }
 }

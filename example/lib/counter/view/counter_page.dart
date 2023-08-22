@@ -35,24 +35,28 @@ class CounterView extends StatelessWidget {
           children: [
             FloatingActionButton(
               onPressed: () async {
-                var subscription = FlutterBluePlus.scanResults.listen(
-                  (results) {
-                    for (final r in results) {
-                      // print(
-                      //   '==> '
-                      //   '${r.device} '
-                      //   '${r.rssi} '
-                      //   '${r.advertisementData} '
-                      //   '${r.timeStamp}',
-                      // );
-                    }
-                  },
-                );
+                final result =
+                    FlutterBluePlus.scan(timeout: Duration(seconds: 2));
+                result.forEach(print);
+                // var subscription = FlutterBluePlus.scanResults.listen(
+                //   (results) {
+                //     for (final r in results) {
+                //       print(
+                //         '==> '
+                //         '${r.device} '
+                //         '${r.rssi} '
+                //         '${r.advertisementData} '
+                //         '${r.timeStamp}',
+                //       );
+                //     }
+                //   },
+                // );
+                //
+                // await FlutterBluePlus.startScan(timeout: Duration(seconds: 1));
+                //
+                // await FlutterBluePlus.stopScan();
+                // subscription.cancel();
 
-                await FlutterBluePlus.startScan(timeout: Duration(seconds: 4));
-
-                await FlutterBluePlus.stopScan();
-                subscription.cancel();
                 // final connected = await FlutterBluePlus.turnOn();
                 // print(connected);
               },
