@@ -32,3 +32,18 @@ class CachedStreamController<T> {
     return _controller.close();
   }
 }
+
+// add to list if item is new,
+// or update existing item
+List<T> addOrUpdate<T>(List<T> results, T item) {
+  var list = List<T>.from(results);
+  if (list.contains(item)) {
+    int index = list.indexOf(item);
+    list[index] = item;
+  } else {
+    list.add(item);
+  }
+  return list;
+}
+
+

@@ -76,60 +76,68 @@ class FlutterBluePlusWindows {
     return [];
   }
 
-  //     final List<ScanResult> list = [];
-  //
-  //     await for (final s in WinBle.scanStream) {
-  //       final device = BluetoothDeviceWindows(
-  //         remoteId: DeviceIdentifier(s.address),
-  //         localName: s.name,
-  //         type: BluetoothDeviceType.le, // TODO: implementation missing
-  //         device: s,
-  //       );
-  //       print('${s.adStructures?.map((e) => [
-  //             e.data,
-  //             e.type
-  //           ])} \t ${s.manufacturerData} => ${s.name}');
-  //       final result = ScanResult(
-  //         device: device,
-  //         advertisementData: AdvertisementData(
-  //           localName: s.name,
-  //           txPowerLevel: null,
-  //           // TODO: implementation missing
-  //           connectable: !s.advType.contains('Non'),
-  //           // TODO: Should be validated
-  //           manufacturerData: {
-  //             if (s.manufacturerData.length >= 2)
-  //               s.manufacturerData[0]: s.manufacturerData.sublist(2),
-  //           },
-  //           serviceData: {},
-  //           // TODO: implementation missing
-  //           serviceUuids: s.serviceUuids.map((e) => e as String).toList(),
-  //         ),
-  //         rssi: int.parse(s.rssi),
-  //         timeStamp: DateTime.now(),
-  //       );
-  //       list.add(result);
-  //       yield list;
-  //     }
-
   static Stream<ScanResult> scan({
-    ScanMode scanMode = ScanMode.lowLatency,
-    List<Guid> withServices = const [],
-    List<String> macAddresses = const [],
+    ScanMode scanMode = ScanMode.lowLatency, // TODO: implementation missing
+    List<Guid> withServices = const [], // TODO: implementation missing
+    List<String> macAddresses = const [], // TODO: implementation missing
     Duration? timeout,
-    bool allowDuplicates = false,
-    bool androidUsesFineLocation = false,
+    bool allowDuplicates = false, // TODO: implementation missing
+    bool androidUsesFineLocation = false, // nothing to implement
   }) async* {
     await _initialize();
 
     WinBle.startScanning();
     _setScanningStatus(true);
 
-    _scanResultsList.add(<ScanResult>[]);
+    final list = <ScanResult>[];
+    _scanResultsList.add(list);
 
     if (timeout != null) {
       _scanTimeout = Timer(timeout, stopScan);
     }
+
+    await for (final s in WinBle.scanStream) {
+      final device = BluetoothDeviceWindows(
+        remoteId: DeviceIdentifier(s.address),
+        localName: s.name,
+        type: s.adStructures
+                ?.where((e) => e.type == 1)
+                .singleOrNull
+                .toDeviceType() ??
+            BluetoothDeviceType.unknown,
+        device: s,
+      );
+      final item = ScanResult(
+        device: device,
+        advertisementData: AdvertisementData(
+          localName: s.name,
+          txPowerLevel: s.adStructures
+              ?.where((e) => e.type == 10)
+              .singleOrNull
+              ?.data
+              .firstOrNull,
+          // TODO: Should verify
+          connectable: !s.advType.contains('Non'),
+          manufacturerData: {
+            if (s.manufacturerData.length >= 2)
+              s.manufacturerData[0]: s.manufacturerData.sublist(2),
+          },
+          // TODO: implementation missing
+          serviceData: {},
+          serviceUuids: s.serviceUuids.map((e) => e as String).toList(),
+        ),
+        rssi: int.parse(s.rssi),
+        timeStamp: DateTime.now(),
+      );
+
+      List<ScanResult> list = addOrUpdate(_scanResultsList.value, item);
+
+      // update list
+      _scanResultsList.add(list);
+
+      yield item;
+    }
+
   }
 
   static Future startScan({
