@@ -1,9 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'package:win_ble/win_ble.dart';
 import 'package:win_ble/win_file.dart';
 
 class FlutterBluePlusWindows {
+  static final _scanningController = StreamController<bool>();
+  static final _scanningStream = _scanningController.stream.asBroadcastStream();
+
+  static bool _isScanningNow = false;
   static bool _initialized = false;
+
+  static void _setScanningStatus(bool value) {
+    _isScanningNow = value;
+    _scanningController.add(value);
+  }
+
 
   static Future<void> _initialize() async {
     if (_initialized) return;
@@ -26,13 +38,13 @@ class FlutterBluePlusWindows {
 
   static Stream<bool> get isScanning async* {
     await _initialize();
-    await for (final s in Stream<bool>.empty()) {
+    await for (final s in _scanningStream) {
       yield s;
     }
   }
 
   static bool get isScanningNow {
-    return false;
+    return _isScanningNow;
   }
 
   static Future<void> turnOn({int timeout = 10}) async {
@@ -51,7 +63,6 @@ class FlutterBluePlusWindows {
         localName: s.name,
         type: BluetoothDeviceType.unknown,
       );
-      print(s.manufacturerData);
       final result = ScanResult(
         device: device,
         advertisementData: AdvertisementData(
@@ -116,6 +127,7 @@ class FlutterBluePlusWindows {
   }) async {
     await _initialize();
     WinBle.startScanning();
+    _setScanningStatus(true);
 
     if (timeout != null) {
       await Future.delayed(
@@ -131,6 +143,7 @@ class FlutterBluePlusWindows {
   static Future<void> stopScan() async {
     await _initialize();
     WinBle.stopScanning();
+    _setScanningStatus(false);
   }
 
   /// Sets the internal FlutterBlue log level
