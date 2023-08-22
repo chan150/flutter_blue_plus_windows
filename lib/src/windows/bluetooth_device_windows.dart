@@ -12,5 +12,5 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   final BleDevice device;
 
   @override
-  List<BluetoothService>? get servicesList => null;
+  List<BluetoothService>? get servicesList => [];
 }
