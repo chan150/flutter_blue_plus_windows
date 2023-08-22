@@ -57,22 +57,20 @@ class FlutterBluePlusWindows {
         advertisementData: AdvertisementData(
           localName: s.name,
           txPowerLevel: null,
+          // TODO: implementation missing
           connectable: !s.advType.contains('Non'),
           manufacturerData: {
             if (s.manufacturerData.length >= 2)
               s.manufacturerData[0]: s.manufacturerData.sublist(2),
           },
-          serviceData: {
-            // s.adStructures.first.data
-          },
+          serviceData: {},
+          // TODO: implementation missing
           serviceUuids: s.serviceUuids.map((e) => e as String).toList(),
         ),
-        rssi: int.tryParse(s.rssi) ?? -100,
+        rssi: int.parse(s.rssi),
         timeStamp: DateTime.now(),
       );
-      // if (!list.map((e) => e.device.remoteId).contains(device.remoteId)) {
       list.add(result);
-      // }
       yield list;
     }
   }
