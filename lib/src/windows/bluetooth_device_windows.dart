@@ -1,5 +1,4 @@
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:win_ble/win_ble.dart';
+part of 'windows.dart';
 
 class BluetoothDeviceWindows extends BluetoothDevice {
   BluetoothDeviceWindows({

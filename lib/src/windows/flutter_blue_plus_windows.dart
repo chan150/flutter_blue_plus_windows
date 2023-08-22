@@ -1,8 +1,4 @@
-import 'dart:async';
-
-import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
-import 'package:win_ble/win_ble.dart';
-import 'package:win_ble/win_file.dart';
+part of 'windows.dart';
 
 class FlutterBluePlusWindows {
   static final _scanResultsList =
@@ -17,6 +13,10 @@ class FlutterBluePlusWindows {
 
   // timeout for scanning that can be cancelled by stopScan
   static Timer? _scanTimeout;
+
+  static final _connected = <BluetoothDeviceWindows>[];
+
+  static final _bonded = <BluetoothDeviceWindows>[];
 
   static Future<void> _initialize() async {
     if (_initialized) return;
@@ -64,12 +64,12 @@ class FlutterBluePlusWindows {
 
   static Future<List<BluetoothDevice>> get connectedSystemDevices async {
     await _initialize();
-    return [];
+    return _connected;
   }
 
   static Future<List<BluetoothDevice>> get bondedDevices async {
     await _initialize();
-    return [];
+    return _bonded;
   }
 
   static Stream<ScanResult> scan({
