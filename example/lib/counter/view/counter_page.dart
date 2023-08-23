@@ -38,15 +38,17 @@ class CounterView extends StatelessWidget {
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
+                BluetoothDevice? device;
                 var isFinished = false;
                 var subscription = FlutterBluePlus.scanResults.listen(
                   (results) async {
                     if (isFinished) return;
                     for (ScanResult r in results) {
-                      if (r.device.remoteId.str.toLowerCase() ==
-                          'cc:17:8a:a0:2a:18') {
+                      if (r.device.localName.startsWith('HEH001')) {
+                        print(r.device);
                         await r.device.connect();
                         isFinished = true;
+                        return;
                       }
                     }
                   },
@@ -77,11 +79,7 @@ class CounterView extends StatelessWidget {
                 final connected = await FlutterBluePlus.connectedSystemDevices;
                 print(connected);
                 connected
-                    .where(
-                      (element) =>
-                          element.remoteId.str.toLowerCase() ==
-                          'cc:17:8a:a0:2a:18',
-                    )
+                    .where((element) => element.localName.startsWith('HEH001'))
                     .lastOrNull
                     ?.disconnect();
                 // await WinBle.disconnect('cc:17:8a:a0:2a:18'.toLowerCase());
