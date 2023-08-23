@@ -58,7 +58,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
         if (isFinished) return;
         if (!event) return;
         if (FlutterBluePlusWindows._connectedDevices
-            .where((e) => e.winBleDevice.address == remoteId.str)
+            .where((e) => e.winBleDevice.address.toUpperCase() == remoteId.str)
             .isNotEmpty) return;
         FlutterBluePlusWindows._connectedDevices.add(this);
         isFinished = true;
@@ -77,7 +77,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
         if (isFinished) return;
         if (event) return;
         if (FlutterBluePlusWindows._connectedDevices
-            .where((e) => e.winBleDevice.address == remoteId.str)
+            .where((e) => e.winBleDevice.address.toUpperCase() == remoteId.str)
             .isEmpty) return;
         FlutterBluePlusWindows._connectedDevices.remove(this);
         isFinished = true;
@@ -124,7 +124,8 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Stream<BluetoothConnectionState> get connectionState async* {
-    BluetoothConnectionState initialValue = BluetoothConnectionState.disconnected;
+    BluetoothConnectionState initialValue =
+        BluetoothConnectionState.disconnected;
 
     // WinBle.connectionStream
   }
@@ -135,8 +136,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Future<int> readRssi({int timeout = 15}) async {
-    // TODO: implementation missing
-    throw Exception('Missing implementation');
+    return int.tryParse(winBleDevice.rssi) ?? -100;
   }
 
   Future<int> requestMtu(int desiredMtu, {int timeout = 15}) async {
@@ -147,6 +147,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     required ConnectionPriority connectionPriorityRequest,
   }) async {
     // TODO: implementation missing
+    throw Exception('Missing implementation');
   }
 
   /// Set the preferred connection (Android Only)

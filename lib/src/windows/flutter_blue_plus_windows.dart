@@ -1,6 +1,6 @@
 part of 'windows.dart';
 
-class FlutterBluePlusWindows extends FlutterBluePlus{
+class FlutterBluePlusWindows extends FlutterBluePlus {
   static final _knownServices =
       <DeviceIdentifier, List<BluetoothServiceWindows>>{};
 
@@ -28,7 +28,7 @@ class FlutterBluePlusWindows extends FlutterBluePlus{
   }
 
   static Future<void> _onConnectionStateChange() async {
-    for(final device in _connectedDevices){
+    for (final device in _connectedDevices) {
       // WinBle.connectionStreamOf(device.remoteId.str);
     }
   }
@@ -98,37 +98,39 @@ class FlutterBluePlusWindows extends FlutterBluePlus{
       _scanTimeout = Timer(timeout, stopScan);
     }
 
-    await for (final s in WinBle.scanStream) {
+    await for (final winBleDevice in WinBle.scanStream) {
       final device = BluetoothDeviceWindows(
-        remoteId: DeviceIdentifier(s.address.toUpperCase()),
-        localName: s.name,
-        type: s.adStructures
+        remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
+        localName: winBleDevice.name,
+        type: winBleDevice.adStructures
                 ?.where((e) => e.type == 1)
                 .singleOrNull
                 .toDeviceType() ??
             BluetoothDeviceType.unknown,
-        winBleDevice: s,
+        winBleDevice: winBleDevice,
       );
       final item = ScanResult(
         device: device,
         advertisementData: AdvertisementData(
-          localName: s.name,
-          txPowerLevel: s.adStructures
+          localName: winBleDevice.name,
+          txPowerLevel: winBleDevice.adStructures
               ?.where((e) => e.type == 10)
               .singleOrNull
               ?.data
               .firstOrNull,
           // TODO: Should verify
-          connectable: !s.advType.contains('Non'),
+          connectable: !winBleDevice.advType.contains('Non'),
           manufacturerData: {
-            if (s.manufacturerData.length >= 2)
-              s.manufacturerData[0]: s.manufacturerData.sublist(2),
+            if (winBleDevice.manufacturerData.length >= 2)
+              winBleDevice.manufacturerData[0]:
+                  winBleDevice.manufacturerData.sublist(2),
           },
           // TODO: implementation missing
           serviceData: {},
-          serviceUuids: s.serviceUuids.map((e) => e as String).toList(),
+          serviceUuids:
+              winBleDevice.serviceUuids.map((e) => e as String).toList(),
         ),
-        rssi: int.parse(s.rssi),
+        rssi: int.tryParse(winBleDevice.rssi) ?? -100,
         timeStamp: DateTime.now(),
       );
 
@@ -175,8 +177,8 @@ class FlutterBluePlusWindows extends FlutterBluePlus{
 
   /// Sets the internal FlutterBlue log level
   static void setLogLevel(LogLevel level, {color = true}) {
-     // Nothing to implement
-     return;
+    // Nothing to implement
+    return;
   }
 
   @Deprecated('Deprecated in Android SDK 33 with no replacement')
