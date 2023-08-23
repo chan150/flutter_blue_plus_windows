@@ -58,7 +58,6 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     throw Exception('Missing implementation');
   }
 
-
   Future<List<BluetoothService>> discoverServices({int timeout = 15}) async {
     throw Exception('Missing implementation');
     // TODO: do implementation
@@ -75,5 +74,90 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     // TODO: do implementation
   }
 
+  Stream<int> get mtu {
+    // TODO: do implementation
+    throw Exception('Missing implementation');
+  }
 
+  Future<int> readRssi({int timeout = 15}) async {
+    // TODO: do implementation
+    throw Exception('Missing implementation');
+  }
+
+  Future<int> requestMtu(int desiredMtu, {int timeout = 15}) async {
+    // TODO: do implementation
+    throw Exception('Missing implementation');
+  }
+
+  Future<void> requestConnectionPriority({
+    required ConnectionPriority connectionPriorityRequest,
+  }) async {
+    // TODO: do implementation
+    throw Exception('Missing implementation');
+  }
+
+  /// Set the preferred connection (Android Only)
+  ///   - [txPhy] bitwise OR of all allowed phys for Tx, e.g. (Phy.le2m.mask | Phy.leCoded.mask)
+  ///   - [txPhy] bitwise OR of all allowed phys for Rx, e.g. (Phy.le2m.mask | Phy.leCoded.mask)
+  ///   - [option] preferred coding to use when transmitting on Phy.leCoded
+  /// Please note that this is just a recommendation given to the system.
+  Future<void> setPreferredPhy({
+    required int txPhy,
+    required int rxPhy,
+    required PhyCoding option,
+  }) async {
+    // TODO: do implementation
+    throw Exception('Missing implementation');
+  }
+
+  Future<void> createBond({int timeout = 90}) async {
+    // TODO: do implementation
+    throw Exception('Missing implementation');
+  }
+
+  Future<void> removeBond({int timeout = 30}) async {
+    // TODO: do implementation
+    throw Exception('Missing implementation');
+  }
+
+  Future<void> clearGattCache() async {
+    // TODO: do implementation
+    throw Exception('Missing implementation');
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BluetoothDevice &&
+          runtimeType == other.runtimeType &&
+          remoteId == other.remoteId);
+
+  @override
+  int get hashCode => remoteId.hashCode;
+
+  @override
+  String toString() {
+    return 'BluetoothDevice{'
+        'remoteId: $remoteId, '
+        'localName: $localName, '
+        'type: $type, '
+        'isDiscoveringServices: ${_isDiscoveringServices.value}, '
+        'services: ${FlutterBluePlusWindows._knownServices[remoteId]}'
+        '}';
+  }
+
+  @Deprecated('Use createBond() instead')
+  Future<void> pair() async => await createBond();
+
+  @Deprecated('Use remoteId instead')
+  DeviceIdentifier get id => remoteId;
+
+  @Deprecated('Use localName instead')
+  String get name => localName;
+
+  @Deprecated('Use connectionState instead')
+  Stream<BluetoothConnectionState> get state => connectionState;
+
+  @Deprecated('Use servicesStream instead')
+  Stream<List<BluetoothService>> get services => servicesStream;
 }
