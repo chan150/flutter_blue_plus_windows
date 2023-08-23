@@ -117,7 +117,7 @@ class FlutterBluePlus {
     bool androidUsesFineLocation = false,
   }) async {
     if (Platform.isWindows) {
-      await FlutterBluePlusWindows.startScan(
+      return await FlutterBluePlusWindows.startScan(
         scanMode: scanMode,
         withServices: withServices,
         macAddresses: macAddresses,
@@ -125,9 +125,8 @@ class FlutterBluePlus {
         allowDuplicates: allowDuplicates,
         androidUsesFineLocation: androidUsesFineLocation,
       );
-      return;
     }
-    await BLE.FlutterBluePlus.startScan(
+    return await BLE.FlutterBluePlus.startScan(
       scanMode: scanMode,
       withServices: withServices,
       macAddresses: macAddresses,

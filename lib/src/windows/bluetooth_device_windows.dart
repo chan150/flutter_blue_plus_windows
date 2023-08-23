@@ -58,7 +58,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
         if (isFinished) return;
         if (!event) return;
         if (FlutterBluePlusWindows._connectedDevices
-            .where((e) => e.winBleDevice.name == localName)
+            .where((e) => e.winBleDevice.address == remoteId.str)
             .isNotEmpty) return;
         FlutterBluePlusWindows._connectedDevices.add(this);
         isFinished = true;
@@ -77,7 +77,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
         if (isFinished) return;
         if (event) return;
         if (FlutterBluePlusWindows._connectedDevices
-            .where((e) => e.winBleDevice.name == localName)
+            .where((e) => e.winBleDevice.address == remoteId.str)
             .isEmpty) return;
         FlutterBluePlusWindows._connectedDevices.remove(this);
         isFinished = true;
@@ -100,11 +100,12 @@ class BluetoothDeviceWindows extends BluetoothDevice {
           return BluetoothServiceWindows(
             remoteId: remoteId,
             serviceUuid: Guid(p),
+            // TODO: implementation missing
             isPrimary: true,
             // TODO: implementation missing
             characteristics: [],
             // TODO: implementation missing
-            includedServices: [], // TODO: implementation missing
+            includedServices: [],
           );
         },
       ).toList();
@@ -119,13 +120,13 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   DisconnectReason? get disconnectReason {
-    throw Exception('Missing implementation');
-    // TODO: do implementation
+    return null;
   }
 
-  Stream<BluetoothConnectionState> get connectionState {
-    throw Exception('Missing implementation');
-    // TODO: do implementation
+  Stream<BluetoothConnectionState> get connectionState async* {
+    BluetoothConnectionState initialValue = BluetoothConnectionState.disconnected;
+
+    // WinBle.connectionStream
   }
 
   Stream<int> get mtu {
@@ -134,20 +135,18 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Future<int> readRssi({int timeout = 15}) async {
-    // TODO: do implementation
+    // TODO: implementation missing
     throw Exception('Missing implementation');
   }
 
   Future<int> requestMtu(int desiredMtu, {int timeout = 15}) async {
-    // TODO: do implementation
-    throw Exception('Missing implementation');
+    return await WinBle.getMaxMtuSize(remoteId.str.toLowerCase());
   }
 
   Future<void> requestConnectionPriority({
     required ConnectionPriority connectionPriorityRequest,
   }) async {
-    // TODO: do implementation
-    throw Exception('Missing implementation');
+    // TODO: implementation missing
   }
 
   /// Set the preferred connection (Android Only)
@@ -160,23 +159,19 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     required int rxPhy,
     required PhyCoding option,
   }) async {
-    // TODO: do implementation
-    throw Exception('Missing implementation');
+    // TODO: implementation missing
   }
 
   Future<void> createBond({int timeout = 90}) async {
-    // TODO: do implementation
-    throw Exception('Missing implementation');
+    // TODO: implementation missing
   }
 
   Future<void> removeBond({int timeout = 30}) async {
-    // TODO: do implementation
-    throw Exception('Missing implementation');
+    // TODO: implementation missing
   }
 
   Future<void> clearGattCache() async {
-    // TODO: do implementation
-    throw Exception('Missing implementation');
+    // TODO: implementation missing
   }
 
   @override
