@@ -53,3 +53,54 @@ List<T> addOrUpdate<T>(List<T> results, T item) {
   }
   return list;
 }
+
+extension streamNewStreamWithInitialValue<T> on Stream<T> {
+  Stream<T> newStreamWithInitialValue(T initialValue) {
+    return transform(_NewStreamWithInitialValueTransformer(initialValue));
+  }
+}
+
+// Helper for 'newStreamWithInitialValue' method for streams.
+class _NewStreamWithInitialValueTransformer<T> extends StreamTransformerBase<T, T> {
+  final T initialValue;
+
+  _NewStreamWithInitialValueTransformer(this.initialValue);
+
+  @override
+  Stream<T> bind(Stream<T> stream) {
+    return _bindSingleSubscription(stream);
+  }
+
+  Stream<T> _bindSingleSubscription(Stream<T> stream) {
+    StreamController<T>? controller;
+    StreamSubscription<T>? subscription;
+
+    controller = StreamController<T>(
+      onListen: () {
+        // Emit the initial value
+        controller?.add(initialValue);
+
+        subscription = stream.listen(
+          controller?.add,
+          onError: (Object error) {
+            controller?.addError(error);
+            controller?.close();
+          },
+          onDone: controller?.close,
+        );
+      },
+      onPause: ([Future<dynamic>? resumeSignal]) {
+        subscription?.pause(resumeSignal);
+      },
+      onResume: () {
+        subscription?.resume();
+      },
+      onCancel: () {
+        return subscription?.cancel();
+      },
+      sync: true,
+    );
+
+    return controller.stream;
+  }
+}
