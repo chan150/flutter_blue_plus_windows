@@ -24,8 +24,9 @@ class CounterView extends StatelessWidget {
     return SafeArea(
       child: Scaffold(
         body: StreamBuilder(
-          stream: FlutterBluePlus.adapterState,
+          stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
           builder: (context, snapshot) {
+            print(snapshot.data);
             return Text(snapshot.data.toString());
           },
         ),
@@ -35,27 +36,28 @@ class CounterView extends StatelessWidget {
           children: [
             FloatingActionButton(
               onPressed: () async {
-                final result =
-                    FlutterBluePlus.scan(timeout: Duration(seconds: 2));
-                result.forEach(print);
-                // var subscription = FlutterBluePlus.scanResults.listen(
-                //   (results) {
-                //     for (final r in results) {
-                //       print(
-                //         '==> '
-                //         '${r.device} '
-                //         '${r.rssi} '
-                //         '${r.advertisementData} '
-                //         '${r.timeStamp}',
-                //       );
-                //     }
-                //   },
-                // );
-                //
-                // await FlutterBluePlus.startScan(timeout: Duration(seconds: 1));
-                //
-                // await FlutterBluePlus.stopScan();
-                // subscription.cancel();
+                // final result =
+                //     FlutterBluePlus.scan(timeout: Duration(seconds: 4));
+                // result.forEach(print);
+                var subscription = FlutterBluePlus.scanResults.listen(
+                  (results) {
+                    for (final r in results) {
+                      print('${r.device.remoteId.str} '
+                          '${r.device.localName} '
+                          // '==> '
+                          // '${r.device} '
+                          // '${r.rssi} '
+                          // '${r.advertisementData} '
+                          // '${r.timeStamp}',
+                          );
+                    }
+                  },
+                );
+
+                await FlutterBluePlus.startScan(timeout: Duration(seconds: 4),allowDuplicates: false);
+
+                await FlutterBluePlus.stopScan();
+                subscription.cancel();
 
                 // final connected = await FlutterBluePlus.turnOn();
                 // print(connected);
@@ -65,9 +67,31 @@ class CounterView extends StatelessWidget {
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
-                await FlutterBluePlus.stopScan();
-                // final connected = await FlutterBluePlus.turnOn();
-                // print(connected);
+                final a = await WinBle.discoverServices('cc:17:8a:a0:2a:18');
+                print(a);
+                for(final c in a){
+                  print('$c =================');
+                  final b = await WinBle.discoverCharacteristics(address: 'cc:17:8a:a0:2a:18', serviceId: c);
+                  for(final d in b) {
+                    print(d.uuid);
+                  }
+                }
+                // WinBle.pair('cc:17:8a:a0:2a:18');
+                // WinBle.pair('cc:17:8a:a0:2a:18'.toLowerCase());
+              },
+              child: const Icon(Icons.remove),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              onPressed: () async {
+                await WinBle.connect('cc:17:8a:a0:2a:18'.toLowerCase());
+              },
+              child: const Icon(Icons.remove),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              onPressed: () async {
+                await WinBle.disconnect('cc:17:8a:a0:2a:18'.toLowerCase());
               },
               child: const Icon(Icons.remove),
             ),
@@ -77,3 +101,4 @@ class CounterView extends StatelessWidget {
     );
   }
 }
+

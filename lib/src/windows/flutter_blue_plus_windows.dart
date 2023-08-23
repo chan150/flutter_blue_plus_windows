@@ -1,14 +1,14 @@
 part of 'windows.dart';
 
 class FlutterBluePlusWindows {
+  static final _knownServices =
+      <DeviceIdentifier, List<BluetoothServiceWindows>>{};
+
   static final _scanResultsList =
       CachedStreamController(initialValue: <ScanResult>[]);
   static final _scanningController =
       CachedStreamController<bool>(initialValue: false);
 
-  // static final _scanningStream = _scanningController.stream;
-
-  static bool get _isScanningNow => _scanningController.latestValue;
   static bool _initialized = false;
 
   // timeout for scanning that can be cancelled by stopScan
@@ -25,6 +25,12 @@ class FlutterBluePlusWindows {
       enableLog: false,
     );
     _initialized = true;
+  }
+
+  static Future<void> _onConnectionStateChange() async {
+    for(final device in _connected){
+      // WinBle.connectionStreamOf(device.remoteId.str);
+    }
   }
 
   static Future<bool> get isAvailable async {
@@ -45,7 +51,7 @@ class FlutterBluePlusWindows {
   }
 
   static bool get isScanningNow {
-    return _isScanningNow;
+    return _scanningController.latestValue;
   }
 
   static Future<void> turnOn({int timeout = 10}) async {
@@ -94,7 +100,7 @@ class FlutterBluePlusWindows {
 
     await for (final s in WinBle.scanStream) {
       final device = BluetoothDeviceWindows(
-        remoteId: DeviceIdentifier(s.address),
+        remoteId: DeviceIdentifier(s.address.toUpperCase()),
         localName: s.name,
         type: s.adStructures
                 ?.where((e) => e.type == 1)
@@ -169,7 +175,8 @@ class FlutterBluePlusWindows {
 
   /// Sets the internal FlutterBlue log level
   static void setLogLevel(LogLevel level, {color = true}) {
-    return;
+     // Nothing to implement
+     return;
   }
 
   @Deprecated('Deprecated in Android SDK 33 with no replacement')

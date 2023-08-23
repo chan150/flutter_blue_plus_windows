@@ -21,11 +21,19 @@ class CachedStreamController<T> {
     _controller.add(newValue);
   }
 
-  void listen(Function(T) onData,
-      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+  void listen(
+    Function(T) onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
     onData(latestValue);
-    _controller.stream.listen(onData,
-        onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+    _controller.stream.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
   }
 
   Future<void> close() {
@@ -45,5 +53,3 @@ List<T> addOrUpdate<T>(List<T> results, T item) {
   }
   return list;
 }
-
-
