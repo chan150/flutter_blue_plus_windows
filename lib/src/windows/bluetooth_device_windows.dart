@@ -8,10 +8,10 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     required super.remoteId,
     required super.localName,
     required super.type,
-    required this.device,
+    required this.winBleDevice,
   });
 
-  final BleDevice device;
+  final BleDevice winBleDevice;
 
   // used for 'servicesStream' public api
   final _services = StreamController<List<BluetoothServiceWindows>>.broadcast();
@@ -49,19 +49,73 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     Duration timeout = const Duration(seconds: 35),
     bool autoConnect = false,
   }) async {
-    // TODO: do implementation
-    throw Exception('Missing implementation');
+    await WinBle.connect(remoteId.str.toLowerCase());
+
+    bool isFinished = false;
+    StreamSubscription _connectionStream =
+        WinBle.connectionStreamOf(winBleDevice.address).listen(
+      (event) {
+        if (isFinished) return;
+        if (!event) return;
+        if (FlutterBluePlusWindows._connectedDevices
+            .where((e) => e.winBleDevice.name == localName)
+            .isNotEmpty) return;
+        FlutterBluePlusWindows._connectedDevices.add(this);
+        isFinished = true;
+      },
+    );
+    Timer(timeout, _connectionStream.cancel);
   }
 
   Future<void> disconnect({int timeout = 35}) async {
-    // TODO: do implementation
-    throw Exception('Missing implementation');
+    await WinBle.disconnect(remoteId.str.toLowerCase());
+
+    bool isFinished = false;
+    StreamSubscription _connectionStream =
+        WinBle.connectionStreamOf(winBleDevice.address).listen(
+      (event) {
+        if (isFinished) return;
+        if (event) return;
+        if (FlutterBluePlusWindows._connectedDevices
+            .where((e) => e.winBleDevice.name == localName)
+            .isEmpty) return;
+        FlutterBluePlusWindows._connectedDevices.remove(this);
+        isFinished = true;
+      },
+    );
+    Timer(Duration(seconds: timeout), _connectionStream.cancel);
   }
 
   Future<List<BluetoothService>> discoverServices({int timeout = 15}) async {
-    throw Exception('Missing implementation');
-    // TODO: do implementation
-    return [];
+    List<BluetoothServiceWindows> result = [];
+
+    try {
+      _isDiscoveringServices.add(true);
+
+      final response =
+          await WinBle.discoverServices(remoteId.str.toLowerCase());
+
+      result = response.map(
+        (p) {
+          return BluetoothServiceWindows(
+            remoteId: remoteId,
+            serviceUuid: Guid(p),
+            isPrimary: true,
+            // TODO: implementation missing
+            characteristics: [],
+            // TODO: implementation missing
+            includedServices: [], // TODO: implementation missing
+          );
+        },
+      ).toList();
+
+      FlutterBluePlusWindows._knownServices[remoteId] = result;
+
+      _services.add(result);
+    } finally {
+      _isDiscoveringServices.add(false);
+    }
+    return result;
   }
 
   DisconnectReason? get disconnectReason {
