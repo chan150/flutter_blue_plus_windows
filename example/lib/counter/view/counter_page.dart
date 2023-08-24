@@ -16,20 +16,35 @@ class CounterPage extends StatelessWidget {
   }
 }
 
-class CounterView extends StatelessWidget {
+class CounterView extends StatefulWidget {
   const CounterView({super.key});
 
+  @override
+  State<CounterView> createState() => _CounterViewState();
+}
+
+class _CounterViewState extends State<CounterView> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        body: StreamBuilder(
-          stream: WinBle.connectionStream,
-          // stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
-          builder: (context, snapshot) {
-            print(snapshot.data);
-            return Text(snapshot.data.toString());
-          },
+        body: Column(
+          children: [
+            FutureBuilder(
+              future: FlutterBluePlus.connectedSystemDevices,
+              builder: (context, snapshot) {
+                return Text(snapshot.data.toString());
+              },
+            ),
+            StreamBuilder(
+              stream: WinBle.connectionStream,
+              // stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
+              builder: (context, snapshot) {
+                print(snapshot.data);
+                return Text(snapshot.data.toString());
+              },
+            ),
+          ],
         ),
         floatingActionButton: Column(
           mainAxisAlignment: MainAxisAlignment.end,
@@ -85,6 +100,13 @@ class CounterView extends StatelessWidget {
                 // await WinBle.disconnect('cc:17:8a:a0:2a:18'.toLowerCase());
               },
               child: const Icon(Icons.bluetooth_disabled),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              onPressed: () async {
+                setState((){});
+              },
+              child: const Icon(Icons.refresh),
             ),
           ],
         ),

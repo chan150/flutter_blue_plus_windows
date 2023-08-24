@@ -27,11 +27,11 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     _initialized = true;
   }
 
-  static Future<void> _onConnectionStateChange() async {
-    for (final device in _connectedDevices) {
-      // WinBle.connectionStreamOf(device.remoteId.str);
-    }
-  }
+  // static Future<void> _onConnectionStateChange() async {
+  //   for (final device in _connectedDevices) {
+  //     // WinBle.connectionStreamOf(device.remoteId.str);
+  //   }
+  // }
 
   static Future<bool> get isAvailable async {
     await _initialize();
@@ -70,6 +70,8 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
 
   static Future<List<BluetoothDevice>> get connectedSystemDevices async {
     await _initialize();
+    // final a = await WinBle.connectionStream.last;
+    // print(a);
     return _connectedDevices;
   }
 
