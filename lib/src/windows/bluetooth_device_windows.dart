@@ -57,10 +57,17 @@ class BluetoothDeviceWindows extends BluetoothDevice {
       (event) {
         if (isFinished) return;
         if (!event) return;
-        if (FlutterBluePlusWindows._connectedDevices
+        if (FlutterBluePlusWindows._devices
             .where((e) => e.winBleDevice.address.toUpperCase() == remoteId.str)
             .isNotEmpty) return;
-        FlutterBluePlusWindows._connectedDevices.add(this);
+        FlutterBluePlusWindows._devices.add(this);
+        FlutterBluePlusWindows._connectionStates.putIfAbsent(
+          remoteId.str.toLowerCase(),
+          () => StreamWithLatestValue.withInitialValue(
+            WinBle.connectionStreamOf(remoteId.str.toLowerCase()),
+            initialValue: true,
+          ),
+        );
         isFinished = true;
       },
     );
@@ -70,20 +77,20 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   Future<void> disconnect({int timeout = 35}) async {
     await WinBle.disconnect(remoteId.str.toLowerCase());
 
-    bool isFinished = false;
-    StreamSubscription _connectionStream =
-        WinBle.connectionStreamOf(winBleDevice.address).listen(
-      (event) {
-        if (isFinished) return;
-        if (event) return;
-        if (FlutterBluePlusWindows._connectedDevices
-            .where((e) => e.winBleDevice.address.toUpperCase() == remoteId.str)
-            .isEmpty) return;
-        FlutterBluePlusWindows._connectedDevices.remove(this);
-        isFinished = true;
-      },
-    );
-    Timer(Duration(seconds: timeout), _connectionStream.cancel);
+    // bool isFinished = false;
+    // StreamSubscription _connectionStream =
+    //     WinBle.connectionStreamOf(winBleDevice.address).listen(
+    //   (event) {
+    //     if (isFinished) return;
+    //     if (event) return;
+    //     if (FlutterBluePlusWindows._devices
+    //         .where((e) => e.winBleDevice.address.toUpperCase() == remoteId.str)
+    //         .isEmpty) return;
+    //     FlutterBluePlusWindows._devices.remove(this);
+    //     isFinished = true;
+    //   },
+    // );
+    // Timer(Duration(seconds: timeout), _connectionStream.cancel);
   }
 
   Future<List<BluetoothService>> discoverServices({int timeout = 15}) async {

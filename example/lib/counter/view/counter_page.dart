@@ -30,15 +30,23 @@ class _CounterViewState extends State<CounterView> {
       child: Scaffold(
         body: Column(
           children: [
-            FutureBuilder(
-              future: FlutterBluePlus.connectedSystemDevices,
+            // FutureBuilder(
+            //   future: FlutterBluePlus.connectedSystemDevices,
+            //   builder: (context, snapshot) {
+            //     return Text(snapshot.data.toString());
+            //   },
+            // ),
+            StreamBuilder(
+              // stream: WinBle.connectionStream,
+              stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
               builder: (context, snapshot) {
+                print(snapshot.data);
                 return Text(snapshot.data.toString());
               },
             ),
             StreamBuilder(
-              stream: WinBle.connectionStream,
-              // stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
+              // stream: WinBle.connectionStream,
+              stream: WinBle.connectionStreamOf('d7:d4:7c:61:1d:c7'),
               builder: (context, snapshot) {
                 print(snapshot.data);
                 return Text(snapshot.data.toString());
@@ -104,7 +112,9 @@ class _CounterViewState extends State<CounterView> {
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
-                setState((){});
+                print('=====');
+                final devices = await FlutterBluePlus.connectedSystemDevices;
+                print(devices);
               },
               child: const Icon(Icons.refresh),
             ),

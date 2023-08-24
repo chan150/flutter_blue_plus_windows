@@ -14,9 +14,8 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
   // timeout for scanning that can be cancelled by stopScan
   static Timer? _scanTimeout;
 
-  static final _connectedDevices = <BluetoothDeviceWindows>[];
-
-  static final _bondedDevices = <BluetoothDeviceWindows>[];
+  static final _devices = <BluetoothDeviceWindows>[];
+  static final _connectionStates = <String, StreamWithLatestValue<bool>>{};
 
   static Future<void> _initialize() async {
     if (_initialized) return;
@@ -26,12 +25,6 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     );
     _initialized = true;
   }
-
-  // static Future<void> _onConnectionStateChange() async {
-  //   for (final device in _connectedDevices) {
-  //     // WinBle.connectionStreamOf(device.remoteId.str);
-  //   }
-  // }
 
   static Future<bool> get isAvailable async {
     await _initialize();
@@ -70,14 +63,23 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
 
   static Future<List<BluetoothDevice>> get connectedSystemDevices async {
     await _initialize();
-    // final a = await WinBle.connectionStream.last;
-    // print(a);
-    return _connectedDevices;
+
+    final devices = <BluetoothDeviceWindows>[];
+
+    for (final device in _devices) {
+      final stream = _connectionStates[device.remoteId.str.toLowerCase()];
+      if (stream == null) continue;
+      print(stream.value);
+      if (stream.value == false) continue;
+      devices.add(device);
+    }
+
+    return devices;
   }
 
   static Future<List<BluetoothDevice>> get bondedDevices async {
     await _initialize();
-    return _bondedDevices;
+    return _devices;
   }
 
   static Stream<ScanResult> scan({
@@ -183,7 +185,6 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     return;
   }
 
-  @Deprecated('Deprecated in Android SDK 33 with no replacement')
   static Future<void> turnOff({int timeout = 10}) async {
     await _initialize();
     await WinBle.updateBluetoothState(false);
