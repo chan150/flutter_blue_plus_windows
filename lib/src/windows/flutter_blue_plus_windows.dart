@@ -14,8 +14,8 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
   // timeout for scanning that can be cancelled by stopScan
   static Timer? _scanTimeout;
 
-  static final _devices = <BluetoothDeviceWindows>[];
-  static final _connectionStates = <String, StreamWithLatestValue<bool>>{};
+  static final _connectedDevices = <BluetoothDeviceWindows>[];
+  static final _connectedSubscription = <String, StreamSubscription<bool>>{};
 
   static Future<void> _initialize() async {
     if (_initialized) return;
@@ -63,23 +63,12 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
 
   static Future<List<BluetoothDevice>> get connectedSystemDevices async {
     await _initialize();
-
-    final devices = <BluetoothDeviceWindows>[];
-
-    for (final device in _devices) {
-      final stream = _connectionStates[device.remoteId.str.toLowerCase()];
-      if (stream == null) continue;
-      print(stream.value);
-      if (stream.value == false) continue;
-      devices.add(device);
-    }
-
-    return devices;
+    return _connectedDevices;
   }
 
   static Future<List<BluetoothDevice>> get bondedDevices async {
     await _initialize();
-    return _devices;
+    return _connectedDevices;
   }
 
   static Stream<ScanResult> scan({
@@ -111,7 +100,7 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
                 .singleOrNull
                 .toDeviceType() ??
             BluetoothDeviceType.unknown,
-        winBleDevice: winBleDevice,
+        rssi: int.tryParse(winBleDevice.rssi) ?? -100
       );
       final item = ScanResult(
         device: device,

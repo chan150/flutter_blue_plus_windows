@@ -8,15 +8,15 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     required super.remoteId,
     required super.localName,
     required super.type,
-    required this.winBleDevice,
+    this.rssi,
   });
 
-  final BleDevice winBleDevice;
+  final int? rssi;
 
   // used for 'servicesStream' public api
   final _services = StreamController<List<BluetoothServiceWindows>>.broadcast();
 
-  late final _connectionStream = WinBle.connectionStreamOf(remoteId.str);
+  // late final _connectionStream = WinBle.connectionStreamOf(remoteId.str);
 
   // used for 'isDiscoveringServices' public api
   final _isDiscoveringServices = CachedStreamController(initialValue: false);
@@ -39,7 +39,8 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   Stream<List<BluetoothService>> get servicesStream {
     if (FlutterBluePlusWindows._knownServices[remoteId] != null) {
       return _services.stream.newStreamWithInitialValue(
-          FlutterBluePlusWindows._knownServices[remoteId]!);
+        FlutterBluePlusWindows._knownServices[remoteId]!,
+      );
     } else {
       return _services.stream;
     }
@@ -49,48 +50,60 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     Duration timeout = const Duration(seconds: 35),
     bool autoConnect = false,
   }) async {
-    await WinBle.connect(remoteId.str.toLowerCase());
-
-    bool isFinished = false;
-    StreamSubscription _connectionStream =
-        WinBle.connectionStreamOf(winBleDevice.address).listen(
-      (event) {
-        if (isFinished) return;
-        if (!event) return;
-        if (FlutterBluePlusWindows._devices
-            .where((e) => e.winBleDevice.address.toUpperCase() == remoteId.str)
-            .isNotEmpty) return;
-        FlutterBluePlusWindows._devices.add(this);
-        FlutterBluePlusWindows._connectionStates.putIfAbsent(
-          remoteId.str.toLowerCase(),
-          () => StreamWithLatestValue.withInitialValue(
-            WinBle.connectionStreamOf(remoteId.str.toLowerCase()),
-            initialValue: true,
-          ),
-        );
-        isFinished = true;
-      },
-    );
-    Timer(timeout, _connectionStream.cancel);
-  }
-
-  Future<void> disconnect({int timeout = 35}) async {
-    await WinBle.disconnect(remoteId.str.toLowerCase());
-
     // bool isFinished = false;
     // StreamSubscription _connectionStream =
-    //     WinBle.connectionStreamOf(winBleDevice.address).listen(
+    //     WinBle.connectionStreamOf(remoteId.str.toLowerCase()).listen(
     //   (event) {
     //     if (isFinished) return;
-    //     if (event) return;
-    //     if (FlutterBluePlusWindows._devices
-    //         .where((e) => e.winBleDevice.address.toUpperCase() == remoteId.str)
-    //         .isEmpty) return;
-    //     FlutterBluePlusWindows._devices.remove(this);
+    //     if (!event) return;
+    //     if (FlutterBluePlusWindows._connectedDevices
+    //         .where((e) => e.remoteId == remoteId)
+    //         .isNotEmpty) return;
+    //     FlutterBluePlusWindows._connectedDevices.add(this);
     //     isFinished = true;
     //   },
     // );
-    // Timer(Duration(seconds: timeout), _connectionStream.cancel);
+    // Timer(timeout, _connectionStream.cancel);
+
+    try {
+      await WinBle.connect(remoteId.str.toLowerCase());
+      final existed = FlutterBluePlusWindows._connectedDevices
+          .where((e) => e.remoteId == remoteId)
+          .isNotEmpty;
+      if (!existed) {
+        FlutterBluePlusWindows._connectedDevices.add(this);
+      }
+    } catch (e) {
+      print(e);
+    } finally {}
+  }
+
+  Future<void> disconnect({int timeout = 35}) async {
+    // bool isFinished = false;
+    // StreamSubscription connectionStream =
+    //     WinBle.connectionStreamOf(remoteId.str.toLowerCase()).listen(
+    //   (event) {
+    //     if (isFinished) return;
+    //     // if (event) return;
+    //     // if (FlutterBluePlusWindows._connectedDevices
+    //     //     .where((e) => e.remoteId == remoteId)
+    //     //     .isEmpty) return;
+    //     isFinished = true;
+    //   },
+    // );
+    // final timer = Timer(Duration(seconds: timeout), connectionStream.cancel);
+
+    try {
+      await WinBle.disconnect(remoteId.str.toLowerCase());
+      FlutterBluePlusWindows._connectedDevices.remove(this);
+    } catch (e) {
+      print(e);
+    } finally {
+      // connectionStream.cancel();
+      // timer.cancel();
+    }
+
+    print('-------------------------------');
   }
 
   Future<List<BluetoothService>> discoverServices({int timeout = 15}) async {
@@ -143,7 +156,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Future<int> readRssi({int timeout = 15}) async {
-    return int.tryParse(winBleDevice.rssi) ?? -100;
+    return rssi ?? -100;
   }
 
   Future<int> requestMtu(int desiredMtu, {int timeout = 15}) async {
