@@ -30,12 +30,12 @@ class _CounterViewState extends State<CounterView> {
       child: Scaffold(
         body: Column(
           children: [
-            // FutureBuilder(
-            //   future: FlutterBluePlus.connectedSystemDevices,
-            //   builder: (context, snapshot) {
-            //     return Text(snapshot.data.toString());
-            //   },
-            // ),
+            StreamBuilder(
+              stream: FlutterBluePlus.connectedSystemDevices.asStream(),
+              builder: (context, snapshot) {
+                return Text(snapshot.data.toString());
+              },
+            ),
             StreamBuilder(
               // stream: WinBle.connectionStream,
               stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
@@ -61,7 +61,6 @@ class _CounterViewState extends State<CounterView> {
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
-                BluetoothDevice? device;
                 var isFinished = false;
                 var subscription = FlutterBluePlus.scanResults.listen(
                   (results) async {

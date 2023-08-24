@@ -15,7 +15,8 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
   static Timer? _scanTimeout;
 
   static final _connectedDevices = <BluetoothDeviceWindows>[];
-  static final _connectedSubscription = <String, StreamSubscription<bool>>{};
+  static final _connectedBehaviors =
+      <BluetoothDeviceWindows, BehaviorSubject<bool>>{};
 
   static Future<void> _initialize() async {
     if (_initialized) return;
@@ -93,15 +94,14 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
 
     await for (final winBleDevice in WinBle.scanStream) {
       final device = BluetoothDeviceWindows(
-        remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
-        localName: winBleDevice.name,
-        type: winBleDevice.adStructures
-                ?.where((e) => e.type == 1)
-                .singleOrNull
-                .toDeviceType() ??
-            BluetoothDeviceType.unknown,
-        rssi: int.tryParse(winBleDevice.rssi) ?? -100
-      );
+          remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
+          localName: winBleDevice.name,
+          type: winBleDevice.adStructures
+                  ?.where((e) => e.type == 1)
+                  .singleOrNull
+                  .toDeviceType() ??
+              BluetoothDeviceType.unknown,
+          rssi: int.tryParse(winBleDevice.rssi) ?? -100);
       final item = ScanResult(
         device: device,
         advertisementData: AdvertisementData(
