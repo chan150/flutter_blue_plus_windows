@@ -91,7 +91,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
           );
     } catch (e) {
       print(e);
-    } finally {}
+    }
   }
 
   Future<void> disconnect({int timeout = 35}) async {
