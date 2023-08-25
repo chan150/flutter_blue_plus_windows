@@ -99,15 +99,15 @@ class BluetoothDeviceWindows extends BluetoothDevice {
       _isDiscoveringServices.add(true);
 
       final response = await WinBle.discoverServices(_address);
-      final characteristics = <BluetoothCharacteristic>[];
+      final map = <String, List<BluetoothCharacteristic>>{};
 
       for (final serviceId in response) {
         final characteristic = await WinBle.discoverCharacteristics(
           address: _address,
           serviceId: serviceId,
         );
-        characteristics.addAll(
-          characteristic.map(
+        map[serviceId] = [
+          ...characteristic.map(
             (e) => BluetoothCharacteristicWindows(
               remoteId: remoteId,
               serviceUuid: Guid(serviceId),
@@ -116,22 +116,20 @@ class BluetoothDeviceWindows extends BluetoothDevice {
               propertiesWinBle: e.properties,
             ),
           ),
-        );
+        ];
       }
 
       result = response.map(
-        (p) {
-          return BluetoothServiceWindows(
+        (p) => BluetoothServiceWindows(
             remoteId: remoteId,
             serviceUuid: Guid(p),
             // TODO: implementation missing
             isPrimary: true,
             // TODO: implementation missing
-            characteristics: characteristics,
+            characteristics: map[p]!,
             // TODO: implementation missing
             includedServices: [],
-          );
-        },
+          ),
       ).toList();
 
       FlutterBluePlusWindows._knownServices[remoteId] = result;
@@ -144,6 +142,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   DisconnectReason? get disconnectReason {
+    // TODO: nothing to do
     return null;
   }
 
@@ -151,11 +150,19 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     BluetoothConnectionState initialValue =
         BluetoothConnectionState.disconnected;
 
-    // WinBle.connectionStream
+    await for (final state in WinBle.bleState){
+      switch(state){
+        case BleState.On:
+        case BleState.Off:
+        case BleState.Disabled:
+        case BleState.Unsupported:
+        case BleState.Unknown:
+      }
+    }
   }
 
   Stream<int> get mtu async* {
-    yield await requestMtu(100);
+    yield rssi ?? -100;
   }
 
   Future<int> readRssi({int timeout = 15}) async {
@@ -169,8 +176,8 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   Future<void> requestConnectionPriority({
     required ConnectionPriority connectionPriorityRequest,
   }) async {
-    // TODO: implementation missing
-    throw Exception('Missing implementation');
+    // TODO: nothing to do
+    return;
   }
 
   /// Set the preferred connection (Android Only)

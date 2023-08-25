@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:example/counter/counter.dart';
 import 'package:example/l10n/l10n.dart';
 import 'package:flutter/material.dart';
@@ -33,27 +35,38 @@ class _CounterViewState extends State<CounterView> {
         body: Column(
           children: [
             if (_device != null)
-              StreamBuilder(
-                stream: _device!.mtu,
-                builder: (context, snapshot) {
-                  print(snapshot.data);
-                  return Text(snapshot.data.toString());
-                },
+              Column(
+                children: [
+                  StreamBuilder(
+                    stream: _device!.connectionState,
+                    builder: (context, snapshot) {
+                      print('Connection state : ${snapshot.data}');
+                      return Text(snapshot.data.toString());
+                    },
+                  ),
+                  StreamBuilder(
+                    stream: _device!.mtu,
+                    builder: (context, snapshot) {
+                      print('Con');
+                      return Text(snapshot.data.toString());
+                    },
+                  ),
+                ],
               ),
-            StreamBuilder(
-              // stream: WinBle.connectionStream,
-              stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
-              builder: (context, snapshot) {
-                return Text(snapshot.data.toString());
-              },
-            ),
-            StreamBuilder(
-              // stream: WinBle.connectionStream,
-              stream: WinBle.connectionStreamOf('d7:d4:7c:61:1d:c7'),
-              builder: (context, snapshot) {
-                return Text(snapshot.data.toString());
-              },
-            ),
+            // StreamBuilder(
+            //   // stream: WinBle.connectionStream,
+            //   stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
+            //   builder: (context, snapshot) {
+            //     return Text(snapshot.data.toString());
+            //   },
+            // ),
+            // StreamBuilder(
+            //   // stream: WinBle.connectionStream,
+            //   stream: WinBle.connectionStreamOf('d7:d4:7c:61:1d:c7'),
+            //   builder: (context, snapshot) {
+            //     return Text(snapshot.data.toString());
+            //   },
+            // ),
           ],
         ),
         floatingActionButton: Column(
@@ -129,9 +142,9 @@ class _CounterViewState extends State<CounterView> {
               onPressed: () async {
                 final _device = this._device;
                 if (_device != null) {
-                  print(_device);
-                  print(await _device.discoverServices());
-                  print(_device);
+                  // log(_device.toString());
+                  log((await _device.discoverServices()).join('\n'));
+                  // log(_device.toString());
                 }
               },
               child: const Icon(Icons.refresh),
