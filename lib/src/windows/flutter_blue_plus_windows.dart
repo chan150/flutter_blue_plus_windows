@@ -20,11 +20,6 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
 
   static Future<void> _initialize() async {
     if (_initialized) return;
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.systemAlertWindow,
-    ].request();
-    print(statuses[Permission.systemAlertWindow]);
-
     await WinBle.initialize(
       serverPath: await WinServer.path,
       enableLog: true,

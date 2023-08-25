@@ -24,23 +24,26 @@ class CounterView extends StatefulWidget {
 }
 
 class _CounterViewState extends State<CounterView> {
+  BluetoothDevice? _device;
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
         body: Column(
           children: [
-            StreamBuilder(
-              stream: FlutterBluePlus.connectedSystemDevices.asStream(),
-              builder: (context, snapshot) {
-                return Text(snapshot.data.toString());
-              },
-            ),
+            if (_device != null)
+              StreamBuilder(
+                stream: _device!.mtu,
+                builder: (context, snapshot) {
+                  print(snapshot.data);
+                  return Text(snapshot.data.toString());
+                },
+              ),
             StreamBuilder(
               // stream: WinBle.connectionStream,
               stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
               builder: (context, snapshot) {
-                print(snapshot.data);
                 return Text(snapshot.data.toString());
               },
             ),
@@ -48,7 +51,6 @@ class _CounterViewState extends State<CounterView> {
               // stream: WinBle.connectionStream,
               stream: WinBle.connectionStreamOf('d7:d4:7c:61:1d:c7'),
               builder: (context, snapshot) {
-                print(snapshot.data);
                 return Text(snapshot.data.toString());
               },
             ),
@@ -70,6 +72,7 @@ class _CounterViewState extends State<CounterView> {
                         print(r.device);
                         await r.device.connect();
                         isFinished = true;
+
                         return;
                       }
                     }
@@ -111,9 +114,25 @@ class _CounterViewState extends State<CounterView> {
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
-                print('=====');
                 final devices = await FlutterBluePlus.connectedSystemDevices;
                 print(devices);
+
+                if (devices.isNotEmpty) {
+                  _device = devices.first;
+                }
+                setState(() {});
+              },
+              child: const Icon(Icons.refresh),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              onPressed: () async {
+                final _device = this._device;
+                if (_device != null) {
+                  print(_device);
+                  print(await _device.discoverServices());
+                  print(_device);
+                }
               },
               child: const Icon(Icons.refresh),
             ),
