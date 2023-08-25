@@ -1,7 +1,6 @@
 import 'dart:developer';
 
 import 'package:example/counter/counter.dart';
-import 'package:example/l10n/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
@@ -41,7 +40,7 @@ class _CounterViewState extends State<CounterView> {
                     stream: _device!.connectionState,
                     builder: (context, snapshot) {
                       print('Connection state : ${snapshot.data}');
-                      return Text(snapshot.data.toString());
+                      return Text('Connection state : ${snapshot.data}');
                     },
                   ),
                   StreamBuilder(

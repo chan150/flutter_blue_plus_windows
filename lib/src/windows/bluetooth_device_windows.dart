@@ -111,26 +111,29 @@ class BluetoothDeviceWindows extends BluetoothDevice {
             (e) => BluetoothCharacteristicWindows(
               remoteId: remoteId,
               serviceUuid: Guid(serviceId),
-              characteristicUuid:  Guid(e.uuid),
-              descriptors: [], // TODO: implementation missing
+              characteristicUuid: Guid(e.uuid),
+              descriptors: [],
+              // TODO: implementation missing
               propertiesWinBle: e.properties,
             ),
           ),
         ];
       }
 
-      result = response.map(
-        (p) => BluetoothServiceWindows(
-            remoteId: remoteId,
-            serviceUuid: Guid(p),
-            // TODO: implementation missing
-            isPrimary: true,
-            // TODO: implementation missing
-            characteristics: map[p]!,
-            // TODO: implementation missing
-            includedServices: [],
-          ),
-      ).toList();
+      result = response
+          .map(
+            (p) => BluetoothServiceWindows(
+              remoteId: remoteId,
+              serviceUuid: Guid(p),
+              // TODO: implementation missing
+              isPrimary: true,
+              // TODO: implementation missing
+              characteristics: map[p]!,
+              // TODO: implementation missing
+              includedServices: [],
+            ),
+          )
+          .toList();
 
       FlutterBluePlusWindows._knownServices[remoteId] = result;
 
@@ -147,17 +150,9 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Stream<BluetoothConnectionState> get connectionState async* {
-    BluetoothConnectionState initialValue =
-        BluetoothConnectionState.disconnected;
-
-    await for (final state in WinBle.bleState){
-      switch(state){
-        case BleState.On:
-        case BleState.Off:
-        case BleState.Disabled:
-        case BleState.Unsupported:
-        case BleState.Unknown:
-      }
+    await for (final state in WinBle.connectionStreamOf(_address)) {
+      if (state) yield BluetoothConnectionState.connected;
+      yield BluetoothConnectionState.disconnected;
     }
   }
 
@@ -198,6 +193,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Future<void> removeBond({int timeout = 30}) async {
+    await WinBle.unPair(_address);
     // TODO: implementation missing
   }
 

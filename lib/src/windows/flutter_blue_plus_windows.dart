@@ -22,7 +22,7 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     if (_initialized) return;
     await WinBle.initialize(
       serverPath: await WinServer.path,
-      enableLog: true,
+      enableLog: false,
     );
     _initialized = true;
   }
