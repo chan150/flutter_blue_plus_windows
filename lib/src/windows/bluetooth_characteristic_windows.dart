@@ -52,15 +52,16 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
           ),
         );
 
-  Stream<List<int>> get onValueReceived async* {
-    // TODO: correct implementation is required
-    // final value = await WinBle.read(
-    //     address: remoteId.str.toLowerCase(),
-    //     serviceId: serviceUuid.toString(),
-    //     characteristicId: characteristicUuid.toString());
-    // lastValue = value;
-    // yield value;
-  }
+  Stream<List<int>> get onValueReceived => WinBle.characteristicValueStreamOf(
+        address: remoteId.str.toLowerCase(),
+        serviceId: serviceUuid.toString(),
+        characteristicId: characteristicUuid.toString(),
+      ).map(
+        (c) {
+          lastValue = c.value; // Update cache of lastValue
+          return c.value;
+        },
+      );
 
 // FlutterBluePlus._methodStream.stream
 //     .where((m) => m.method == "OnCharacteristicReceived")
