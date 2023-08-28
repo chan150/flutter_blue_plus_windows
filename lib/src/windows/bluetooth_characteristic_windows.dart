@@ -52,6 +52,8 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
           ),
         );
 
+  String get _address => remoteId.str.toLowerCase();
+
   Stream<List<int>> get onValueReceived => WinBle.characteristicValueStreamOf(
         address: remoteId.str.toLowerCase(),
         serviceId: serviceUuid.toString(),
@@ -95,7 +97,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
   Future<void> write(List<int> value,
       {bool withoutResponse = false, int timeout = 15}) async {
     WinBle.write(
-      address: remoteId.str.toLowerCase(),
+      address: _address,
       service: serviceUuid.toString(),
       characteristic: characteristicUuid.toString(),
       data: Uint8List.fromList(value),
@@ -103,8 +105,23 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
     );
   }
 
-  // TODO: implementation is required
-  Future<bool> setNotifyValue(bool notify, {int timeout = 15}) async {
+  Future<bool> setNotifyValue(
+    bool notify, {
+    int timeout = 15,
+  }) async {
+    if(notify){
+      await WinBle.subscribeToCharacteristic(
+        address: _address,
+        serviceId: serviceUuid.toString(),
+        characteristicId: characteristicUuid.toString(),
+      );
+    } else {
+      await WinBle.unSubscribeFromCharacteristic(
+        address: _address,
+        serviceId: serviceUuid.toString(),
+        characteristicId: characteristicUuid.toString(),
+      );
+    }
     return true;
   }
 }
