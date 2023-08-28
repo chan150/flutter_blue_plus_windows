@@ -1,12 +1,13 @@
-[![pub package](https://img.shields.io/pub/v/flutter_blue_plus.svg)](https://pub.dartlang.org/packages/flutter_blue_plus_windows)
+[![pub package](https://img.shields.io/pub/v/flutter_blue_plus_windows.svg)](https://pub.dartlang.org/packages/flutter_blue_plus_windows)
 
 # Flutter Blue Plus + Win Ble
 This project is a wrapper library of Flutter Blue Plus and Win_ble.
 It aims to enable that Flutter_blue_plus can be operated on Windows.
 
 ## Reference
-* [Flutter Blue Plus](https://github.com/rohitsangwan01/win_ble)
-* [Win Ble](https://github.com/rohitsangwan01/win_ble)
+* [Flutter Blue Plus](https://github.com/rohitsangwan01/win_ble) [![pub package](https://img.shields.io/pub/v/flutter_blue_plus.svg)](https://pub.dartlang.org/packages/flutter_blue_plus)
+* [Win Ble](https://github.com/rohitsangwan01/win_ble) [![pub package](https://img.shields.io/pub/v/win_ble.svg)](https://pub.dartlang.org/packages/win_ble)
+
 
 ## Note
 
@@ -46,8 +47,6 @@ else{
 }
 // <------- UpTo Here --------- >
 ```
-
-[![pub package](https://img.shields.io/pub/v/flutter_blue_plus.svg)](https://pub.dartlang.org/packages/flutter_blue_plus)
 
 <br>
 <p align="center">
