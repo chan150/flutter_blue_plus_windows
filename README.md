@@ -1,16 +1,12 @@
-# Flutter blue plus + Win ble
-This project is a wrapper library of Flutter_blue_plus and Win_ble.
-It aims to enable that Flutter_blue_plus can be operated on Windows.  
+[![pub package](https://img.shields.io/pub/v/flutter_blue_plus.svg)](https://pub.dartlang.org/packages/flutter_blue_plus_windows)
 
-[![pub package](https://img.shields.io/pub/v/flutter_blue_plus.svg)](https://pub.dartlang.org/packages/flutter_blue_plus)
+# Flutter Blue Plus + Win Ble
+This project is a wrapper library of Flutter Blue Plus and Win_ble.
+It aims to enable that Flutter_blue_plus can be operated on Windows.
 
-<br>
-<p align="center">
-<img alt="FlutterBlue" src="https://github.com/boskokg/flutter_blue_plus/blob/master/site/flutterblueplus.png?raw=true" />
-</p>
-<br><br>
-
-**Note: this plugin is continuous work from [FlutterBlue](https://github.com/pauldemarco/flutter_blue) since maintenance stopped.**
+## Reference
+[Flutter Blue Plus](https://github.com/rohitsangwan01/win_ble)
+[Win Ble](https://github.com/rohitsangwan01/win_ble)
 
 ## Note
 
@@ -50,6 +46,17 @@ else{
 }
 // <------- UpTo Here --------- >
 ```
+
+[![pub package](https://img.shields.io/pub/v/flutter_blue_plus.svg)](https://pub.dartlang.org/packages/flutter_blue_plus)
+
+<br>
+<p align="center">
+<img alt="FlutterBlue" src="https://github.com/boskokg/flutter_blue_plus/blob/master/site/flutterblueplus.png?raw=true" />
+</p>
+<br><br>
+
+**Note: this plugin is continuous work from [FlutterBlue](https://github.com/pauldemarco/flutter_blue) since maintenance stopped.**
+
 
 ## Contents
 
