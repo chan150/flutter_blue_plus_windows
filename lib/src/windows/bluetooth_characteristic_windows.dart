@@ -51,4 +51,59 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
             value: [],
           ),
         );
+
+  Stream<List<int>> get onValueReceived async* {
+    // TODO: correct implementation is required
+    // final value = await WinBle.read(
+    //     address: remoteId.str.toLowerCase(),
+    //     serviceId: serviceUuid.toString(),
+    //     characteristicId: characteristicUuid.toString());
+    // lastValue = value;
+    // yield value;
+  }
+
+// FlutterBluePlus._methodStream.stream
+//     .where((m) => m.method == "OnCharacteristicReceived")
+//     .map((m) => m.arguments)
+//     .map((args) => BmOnCharacteristicReceived.fromMap(args))
+//     .where((p) => p.remoteId == remoteId.toString())
+//     .where((p) => p.serviceUuid == serviceUuid)
+//     .where((p) => p.characteristicUuid == characteristicUuid)
+//     .where((p) => p.success == true)
+//     .map(
+//   (c) {
+//     lastValue = c.value; // Update cache of lastValue
+//     return c.value;
+//   },
+// );
+
+  // TODO: implementation is required
+  bool get isNotifying => false;
+
+  Future<List<int>> read({int timeout = 15}) async {
+    final value = await WinBle.read(
+      address: remoteId.str.toLowerCase(),
+      serviceId: serviceUuid.toString(),
+      characteristicId: characteristicUuid.toString(),
+    );
+    lastValue = value;
+
+    return value;
+  }
+
+  Future<void> write(List<int> value,
+      {bool withoutResponse = false, int timeout = 15}) async {
+    WinBle.write(
+      address: remoteId.str.toLowerCase(),
+      service: serviceUuid.toString(),
+      characteristic: characteristicUuid.toString(),
+      data: Uint8List.fromList(value),
+      writeWithResponse: propertiesWinBle.writeWithoutResponse ?? false,
+    );
+  }
+
+  // TODO: implementation is required
+  Future<bool> setNotifyValue(bool notify, {int timeout = 15}) async {
+    return true;
+  }
 }

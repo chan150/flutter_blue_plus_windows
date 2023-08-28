@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'package:rxdart/rxdart.dart';
