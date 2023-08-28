@@ -1,3 +1,6 @@
+## 1.0.3
+* fix typo in README.md
+
 ## 1.0.2
 * add repository in pubspec.yaml 
 
