@@ -42,11 +42,12 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
               indicate: propertiesWinBle.indicate ?? false,
               authenticatedSignedWrites:
                   propertiesWinBle.authenticatedSignedWrites ?? false,
+              // TODO: implementation missing
               extendedProperties: false,
               // TODO: implementation missing
               notifyEncryptionRequired: false,
               // TODO: implementation missing
-              indicateEncryptionRequired: false, // TODO: implementation missing
+              indicateEncryptionRequired: false,
             ),
             value: [],
           ),
@@ -54,6 +55,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
 
   String get _address => remoteId.str.toLowerCase();
 
+  // TODO: need to verify
   Stream<List<int>> get onValueReceived => WinBle.characteristicValueStreamOf(
         address: remoteId.str.toLowerCase(),
         serviceId: serviceUuid.toString(),
@@ -105,6 +107,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
     );
   }
 
+  // TODO: need to verify
   Future<bool> setNotifyValue(
     bool notify, {
     int timeout = 15,
