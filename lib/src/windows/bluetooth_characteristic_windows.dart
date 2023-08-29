@@ -56,16 +56,22 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
   String get _address => remoteId.str.toLowerCase();
 
   // TODO: need to verify
-  Stream<List<int>> get onValueReceived => WinBle.characteristicValueStreamOf(
-        address: remoteId.str.toLowerCase(),
-        serviceId: serviceUuid.toString(),
-        characteristicId: characteristicUuid.toString(),
-      ).map(
-        (c) {
-          lastValue = c.value; // Update cache of lastValue
-          return c.value;
-        },
-      );
+  Stream<List<int>> get onValueReceived async* {
+    await WinBle.subscribeToCharacteristic(
+      address: _address,
+      serviceId: serviceUuid.toString(),
+      characteristicId: characteristicUuid.toString(),
+    );
+    final stream = WinBle.characteristicValueStreamOf(
+      address: remoteId.str.toLowerCase(),
+      serviceId: serviceUuid.toString(),
+      characteristicId: characteristicUuid.toString(),
+    );
+    await for(final event in stream){
+      lastValue = event.value;
+      yield event.value as List<int>;
+    }
+  }
 
 // FlutterBluePlus._methodStream.stream
 //     .where((m) => m.method == "OnCharacteristicReceived")
@@ -98,7 +104,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
 
   Future<void> write(List<int> value,
       {bool withoutResponse = false, int timeout = 15}) async {
-    WinBle.write(
+    await WinBle.write(
       address: _address,
       service: serviceUuid.toString(),
       characteristic: characteristicUuid.toString(),
@@ -112,19 +118,19 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
     bool notify, {
     int timeout = 15,
   }) async {
-    if(notify){
-      await WinBle.subscribeToCharacteristic(
-        address: _address,
-        serviceId: serviceUuid.toString(),
-        characteristicId: characteristicUuid.toString(),
-      );
-    } else {
-      await WinBle.unSubscribeFromCharacteristic(
-        address: _address,
-        serviceId: serviceUuid.toString(),
-        characteristicId: characteristicUuid.toString(),
-      );
-    }
+    // if(notify){
+    //   await WinBle.subscribeToCharacteristic(
+    //     address: _address,
+    //     serviceId: serviceUuid.toString(),
+    //     characteristicId: characteristicUuid.toString(),
+    //   );
+    // } else {
+    //   await WinBle.unSubscribeFromCharacteristic(
+    //     address: _address,
+    //     serviceId: serviceUuid.toString(),
+    //     characteristicId: characteristicUuid.toString(),
+    //   );
+    // }
     return true;
   }
 }
