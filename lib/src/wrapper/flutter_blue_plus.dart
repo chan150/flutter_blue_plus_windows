@@ -109,29 +109,22 @@ class FlutterBluePlus {
   ///  - call [stopScan] to complete the returned future, or set [timeout]
   ///  - see [scan] documentation for more details
   static Future startScan({
-    BLE.ScanMode scanMode = BLE.ScanMode.lowLatency,
     List<BLE.Guid> withServices = const [],
-    List<String> macAddresses = const [],
     Duration? timeout,
-    bool allowDuplicates = false,
+    Duration? removeIfGone,
+    bool oneByOne = false,
     bool androidUsesFineLocation = false,
   }) async {
     if (Platform.isWindows) {
       return await FlutterBluePlusWindows.startScan(
-        scanMode: scanMode,
         withServices: withServices,
-        macAddresses: macAddresses,
         timeout: timeout,
-        allowDuplicates: allowDuplicates,
         androidUsesFineLocation: androidUsesFineLocation,
       );
     }
     return await BLE.FlutterBluePlus.startScan(
-      scanMode: scanMode,
       withServices: withServices,
-      macAddresses: macAddresses,
       timeout: timeout,
-      allowDuplicates: allowDuplicates,
       androidUsesFineLocation: androidUsesFineLocation,
     );
   }

@@ -4,6 +4,9 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
   static final _knownServices =
       <DeviceIdentifier, List<BluetoothServiceWindows>>{};
 
+  // stream used for the isScanning public api
+  static final _isScanning = CachedStreamController<bool>(initialValue: false);
+
   static final _scanResultsList =
       CachedStreamController(initialValue: <ScanResult>[]);
   static final _scanningController =
@@ -74,6 +77,7 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     return _devices;
   }
 
+  @Deprecated('removed. use startScan with the oneByOne option instead')
   static Stream<ScanResult> scan({
     ScanMode scanMode = ScanMode.lowLatency, // TODO: implementation missing
     List<Guid> withServices = const [], // TODO: implementation missing
@@ -81,83 +85,84 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     Duration? timeout,
     bool allowDuplicates = false, // TODO: implementation missing
     bool androidUsesFineLocation = false, // nothing to implement
-  }) async* {
-    await _initialize();
+  }) => throw Exception;
+  // async* {
+  //   await _initialize();
+  //
+  //   WinBle.startScanning();
+  //   _scanningController.add(true);
+  //
+  //   final list = <ScanResult>[];
+  //   _scanResultsList.add(list);
+  //
+  //   if (timeout != null) {
+  //     _scanTimeout = Timer(timeout, stopScan);
+  //   }
+  //
+  //   await for (final winBleDevice in WinBle.scanStream) {
+  //     final device = BluetoothDeviceWindows(
+  //         remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
+  //         localName: winBleDevice.name,
+  //         type: winBleDevice.adStructures
+  //                 ?.where((e) => e.type == 1)
+  //                 .singleOrNull
+  //                 .toDeviceType() ??
+  //             BluetoothDeviceType.unknown,
+  //         rssi: int.tryParse(winBleDevice.rssi) ?? -100);
+  //     final item = ScanResult(
+  //       device: device,
+  //       advertisementData: AdvertisementData(
+  //         localName: winBleDevice.name,
+  //         txPowerLevel: winBleDevice.adStructures
+  //             ?.where((e) => e.type == 10)
+  //             .singleOrNull
+  //             ?.data
+  //             .firstOrNull,
+  //         // TODO: Should verify
+  //         connectable: !winBleDevice.advType.contains('Non'),
+  //         manufacturerData: {
+  //           if (winBleDevice.manufacturerData.length >= 2)
+  //             winBleDevice.manufacturerData[0]:
+  //                 winBleDevice.manufacturerData.sublist(2),
+  //         },
+  //         // TODO: implementation missing
+  //         serviceData: {},
+  //         serviceUuids:
+  //             winBleDevice.serviceUuids.map((e) => e as String).toList(),
+  //       ),
+  //       rssi: int.tryParse(winBleDevice.rssi) ?? -100,
+  //       timeStamp: DateTime.now(),
+  //     );
+  //
+  //     List<ScanResult> list = addOrUpdate(_scanResultsList.value, item);
+  //
+  //     // update list
+  //     _scanResultsList.add(list);
+  //
+  //     yield item;
+  //   }
+  //   _scanTimeout?.cancel();
+  //   _scanningController.add(false);
+  // }
 
-    WinBle.startScanning();
-    _scanningController.add(true);
-
-    final list = <ScanResult>[];
-    _scanResultsList.add(list);
-
-    if (timeout != null) {
-      _scanTimeout = Timer(timeout, stopScan);
-    }
-
-    await for (final winBleDevice in WinBle.scanStream) {
-      final device = BluetoothDeviceWindows(
-          remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
-          localName: winBleDevice.name,
-          type: winBleDevice.adStructures
-                  ?.where((e) => e.type == 1)
-                  .singleOrNull
-                  .toDeviceType() ??
-              BluetoothDeviceType.unknown,
-          rssi: int.tryParse(winBleDevice.rssi) ?? -100);
-      final item = ScanResult(
-        device: device,
-        advertisementData: AdvertisementData(
-          localName: winBleDevice.name,
-          txPowerLevel: winBleDevice.adStructures
-              ?.where((e) => e.type == 10)
-              .singleOrNull
-              ?.data
-              .firstOrNull,
-          // TODO: Should verify
-          connectable: !winBleDevice.advType.contains('Non'),
-          manufacturerData: {
-            if (winBleDevice.manufacturerData.length >= 2)
-              winBleDevice.manufacturerData[0]:
-                  winBleDevice.manufacturerData.sublist(2),
-          },
-          // TODO: implementation missing
-          serviceData: {},
-          serviceUuids:
-              winBleDevice.serviceUuids.map((e) => e as String).toList(),
-        ),
-        rssi: int.tryParse(winBleDevice.rssi) ?? -100,
-        timeStamp: DateTime.now(),
-      );
-
-      List<ScanResult> list = addOrUpdate(_scanResultsList.value, item);
-
-      // update list
-      _scanResultsList.add(list);
-
-      yield item;
-    }
-    _scanTimeout?.cancel();
-    _scanningController.add(false);
-  }
-
+  /// Start a scan, and return a stream of results
+  ///   - [timeout] calls stopScan after a specified duration
+  ///   - [removeIfGone] if true, remove devices after they've stopped advertising for X duration
+  ///   - [oneByOne] if true, we will stream every advertistment one by one, including duplicates.
+  ///    If false, we deduplicate the advertisements, and return a list of devices.
+  ///   - [androidUsesFineLocation] request ACCESS_FINE_LOCATION permission at runtime
   static Future startScan({
-    ScanMode scanMode = ScanMode.lowLatency,
     List<Guid> withServices = const [],
-    List<String> macAddresses = const [],
     Duration? timeout,
-    bool allowDuplicates = false,
+    Duration? removeIfGone,
+    bool oneByOne = false,
     bool androidUsesFineLocation = false,
   }) async {
     await _initialize();
 
-    await scan(
-      scanMode: scanMode,
-      withServices: withServices,
-      macAddresses: macAddresses,
-      timeout: timeout,
-      allowDuplicates: allowDuplicates,
-      androidUsesFineLocation: androidUsesFineLocation,
-    ).drain();
+    if (_isScanning.latestValue == true) {
+      await stopScan();
+    }
 
     return _scanResultsList.value;
   }
