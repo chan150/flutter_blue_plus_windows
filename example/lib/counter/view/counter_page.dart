@@ -148,6 +148,19 @@ class _CounterViewState extends State<CounterView> {
               },
               child: const Icon(Icons.refresh),
             ),
+
+            const SizedBox(height: 8),
+
+            FloatingActionButton(
+              onPressed: () async {
+                final scan = FlutterBluePlus.startScan(
+                  timeout: const Duration(seconds: 2),
+                );
+
+                // await scan.then((value) => print(value));
+              },
+              child: const Icon(Icons.new_label),
+            ),
           ],
         ),
       ),
