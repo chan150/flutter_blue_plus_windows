@@ -119,12 +119,16 @@ class FlutterBluePlus {
       return await FlutterBluePlusWindows.startScan(
         withServices: withServices,
         timeout: timeout,
+        removeIfGone: removeIfGone,
+        oneByOne: oneByOne,
         androidUsesFineLocation: androidUsesFineLocation,
       );
     }
     return await BLE.FlutterBluePlus.startScan(
       withServices: withServices,
       timeout: timeout,
+      removeIfGone: removeIfGone,
+      oneByOne: oneByOne,
       androidUsesFineLocation: androidUsesFineLocation,
     );
   }

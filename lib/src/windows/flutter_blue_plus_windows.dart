@@ -160,6 +160,16 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
   }) async {
     await _initialize();
 
+    // stop existing scan
+    if (_isScanning.latestValue == true) {
+      await stopScan();
+    }
+
+    // push to stream
+    _isScanning.add(true);
+
+
+
     if (_isScanning.latestValue == true) {
       await stopScan();
     }
