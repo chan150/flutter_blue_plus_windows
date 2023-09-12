@@ -29,6 +29,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
                   serviceUuid: descriptor.serviceUuid,
                   characteristicUuid: descriptor.characteristicUuid,
                   descriptorUuid: descriptor.uuid,
+                  value: descriptor.lastValue,
                 ),
             ],
             properties: BmCharacteristicProperties(
@@ -48,6 +49,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
               // TODO: implementation missing
               indicateEncryptionRequired: false,
             ),
+            value: [],
           ),
         );
 
@@ -65,8 +67,9 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
       serviceId: serviceUuid.toString(),
       characteristicId: characteristicUuid.toString(),
     );
-    await for (final event in stream) {
-      yield [for (final byte in event) byte as int];
+    await for(final event in stream){
+      lastValue = event.value;
+      yield event.value as List<int>;
     }
   }
 
@@ -94,16 +97,13 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
       serviceId: serviceUuid.toString(),
       characteristicId: characteristicUuid.toString(),
     );
+    lastValue = value;
 
     return value;
   }
 
-  Future<void> write(
-    List<int> value, {
-    bool allowLongWrite = false,
-    bool withoutResponse = false,
-    int timeout = 15,
-  }) async {
+  Future<void> write(List<int> value,
+      {bool withoutResponse = false, int timeout = 15}) async {
     await WinBle.write(
       address: _address,
       service: serviceUuid.toString(),

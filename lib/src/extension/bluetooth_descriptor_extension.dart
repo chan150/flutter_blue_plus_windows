@@ -7,6 +7,7 @@ extension BluetoothDescriptorExtension on BluetoothDescriptor {
       serviceUuid: serviceUuid,
       characteristicUuid: characteristicUuid,
       descriptorUuid: descriptorUuid,
+      value: lastValue,
     );
   }
 }
