@@ -66,7 +66,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
       characteristicId: characteristicUuid.toString(),
     );
     await for (final event in stream) {
-      yield event.value as List<int>;
+      yield event as List<int>;
     }
   }
 
