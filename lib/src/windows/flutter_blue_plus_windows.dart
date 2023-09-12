@@ -9,8 +9,6 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
 
   static final _scanResultsList =
       CachedStreamController(initialValue: <ScanResult>[]);
-  static final _scanningController =
-      CachedStreamController<bool>(initialValue: false);
 
   static bool _initialized = false;
 
@@ -42,13 +40,13 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
 
   static Stream<bool> get isScanning async* {
     await _initialize();
-    await for (final s in _scanningController.stream) {
+    await for (final s in _isScanning.stream) {
       yield s;
     }
   }
 
   static bool get isScanningNow {
-    return _scanningController.latestValue;
+    return _isScanning.latestValue;
   }
 
   static Future<void> turnOn({int timeout = 10}) async {
@@ -85,7 +83,9 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     Duration? timeout,
     bool allowDuplicates = false, // TODO: implementation missing
     bool androidUsesFineLocation = false, // nothing to implement
-  }) => throw Exception;
+  }) =>
+      throw Exception;
+
   // async* {
   //   await _initialize();
   //
@@ -168,11 +168,46 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     // push to stream
     _isScanning.add(true);
 
+    /// add WinBle scanning
+    WinBle.startScanning();
 
+    /// Flutter Blue Plus 1.15.X
+    // var settings = BmScanSettings(
+    //             serviceUuids: withServices,
+    //             macAddresses: [],
+    //             allowDuplicates: true,
+    //             androidScanMode: ScanMode.lowLatency.value,
+    //             androidUsesFineLocation: androidUsesFineLocation);
+    //
+    //         Stream<BmScanResponse> responseStream = FlutterBluePlus._methodStream.stream
+    //             .where((m) => m.method == "OnScanResponse")
+    //             .map((m) => m.arguments)
+    //             .map((args) => BmScanResponse.fromMap(args));
+    //
+    //         // Start listening now, before invokeMethod, so we do not miss any results
+    //         _BufferStream<BmScanResponse> _scanBuffer = _BufferStream.listen(responseStream);
 
-    if (_isScanning.latestValue == true) {
-      await stopScan();
+    // Start timer *after* stream is being listened to, to make sure the
+    // timeout does not fire before _buffer is set
+    if (timeout != null) {
+      _scanTimeout = Timer(timeout, stopScan);
     }
+
+    /// Flutter Blue Plus 1.15.X
+    // // invoke platform method
+    // await _invokeMethod('startScan', settings.toMap());
+    //
+    // check every 250ms for gone devices?
+    // late Stream<BmScanResponse?> outputStream;
+    // if (removeIfGone != null) {
+    //   outputStream = _mergeStreams(
+    //       [_scanBuffer.stream, Stream.periodic(Duration(milliseconds: 250))]);
+    // } else {
+    //   outputStream = _scanBuffer.stream;
+    // }
+
+    final output = <ScanResult>[];
+    // _scanResultsList.add(List.from(output));
 
     return _scanResultsList.value;
   }
@@ -182,7 +217,7 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     await _initialize();
     WinBle.stopScanning();
     _scanTimeout?.cancel();
-    _scanningController.add(false);
+    _isScanning.add(false);
   }
 
   /// Sets the internal FlutterBlue log level
