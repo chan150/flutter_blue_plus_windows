@@ -5,10 +5,10 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
       <DeviceIdentifier, List<BluetoothServiceWindows>>{};
 
   // stream used for the isScanning public api
-  static final _isScanning = CachedStreamController<bool>(initialValue: false);
+  static final _isScanning = _StreamController<bool>(initialValue: false);
 
   static final _scanResultsList =
-      CachedStreamController(initialValue: <ScanResult>[]);
+      _StreamController(initialValue: <ScanResult>[]);
 
   static bool _initialized = false;
 

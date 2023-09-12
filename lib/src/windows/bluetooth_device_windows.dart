@@ -19,7 +19,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   // late final _connectionStream = WinBle.connectionStreamOf(remoteId.str);
 
   // used for 'isDiscoveringServices' public api
-  final _isDiscoveringServices = CachedStreamController(initialValue: false);
+  final _isDiscoveringServices = _StreamController(initialValue: false);
 
   StreamSubscription<bool>? _subscription;
 
