@@ -6,6 +6,8 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
   //
   static bool _initialized = false;
 
+  static BluetoothAdapterState _state = BluetoothAdapterState.unknown;
+
   // stream used for the isScanning public api
   static final _isScanning = _StreamController(initialValue: false);
 
@@ -13,15 +15,12 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
   static final _knownServices =
       <DeviceIdentifier, List<BluetoothServiceWindows>>{};
 
-  // stream used for the adapter state public api
-  static final _winBleState = _StreamController(initialValue: BleState.Unknown);
-
   // stream used for the scanResults public api
   static final _scanResultsList =
       _StreamController(initialValue: <ScanResult>[]);
 
   // the subscription to the scan results stream
-  static StreamSubscription<BleDevice>? _scanSubscription;
+  static StreamSubscription<BleDevice?>? _scanSubscription;
 
   // timeout for scanning that can be cancelled by stopScan
   static Timer? _scanTimeout;
@@ -69,7 +68,13 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
 
   static Stream<BluetoothAdapterState> get adapterState async* {
     await _initialize();
-    yield* WinBle.bleState.asBroadcastStream().map((s) => s.toAdapterState());
+    yield _state;
+    yield* WinBle.bleState.asBroadcastStream().map(
+      (s) {
+        _state = s.toAdapterState();
+        return _state;
+      },
+    );
   }
 
   static Future<List<BluetoothDevice>> get connectedSystemDevices async {
@@ -95,65 +100,6 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
   }) =>
       throw Exception;
 
-  // async* {
-  //   await _initialize();
-  //
-  //   WinBle.startScanning();
-  //   _scanningController.add(true);
-  //
-  //   final list = <ScanResult>[];
-  //   _scanResultsList.add(list);
-  //
-  //   if (timeout != null) {
-  //     _scanTimeout = Timer(timeout, stopScan);
-  //   }
-  //
-  //   await for (final winBleDevice in WinBle.scanStream) {
-  //     final device = BluetoothDeviceWindows(
-  //         remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
-  //         localName: winBleDevice.name,
-  //         type: winBleDevice.adStructures
-  //                 ?.where((e) => e.type == 1)
-  //                 .singleOrNull
-  //                 .toDeviceType() ??
-  //             BluetoothDeviceType.unknown,
-  //         rssi: int.tryParse(winBleDevice.rssi) ?? -100);
-  //     final item = ScanResult(
-  //       device: device,
-  //       advertisementData: AdvertisementData(
-  //         localName: winBleDevice.name,
-  //         txPowerLevel: winBleDevice.adStructures
-  //             ?.where((e) => e.type == 10)
-  //             .singleOrNull
-  //             ?.data
-  //             .firstOrNull,
-  //         // TODO: Should verify
-  //         connectable: !winBleDevice.advType.contains('Non'),
-  //         manufacturerData: {
-  //           if (winBleDevice.manufacturerData.length >= 2)
-  //             winBleDevice.manufacturerData[0]:
-  //                 winBleDevice.manufacturerData.sublist(2),
-  //         },
-  //         // TODO: implementation missing
-  //         serviceData: {},
-  //         serviceUuids:
-  //             winBleDevice.serviceUuids.map((e) => e as String).toList(),
-  //       ),
-  //       rssi: int.tryParse(winBleDevice.rssi) ?? -100,
-  //       timeStamp: DateTime.now(),
-  //     );
-  //
-  //     List<ScanResult> list = addOrUpdate(_scanResultsList.value, item);
-  //
-  //     // update list
-  //     _scanResultsList.add(list);
-  //
-  //     yield item;
-  //   }
-  //   _scanTimeout?.cancel();
-  //   _scanningController.add(false);
-  // }
-
   /// Start a scan, and return a stream of results
   ///   - [timeout] calls stopScan after a specified duration
   ///   - [removeIfGone] if true, remove devices after they've stopped advertising for X duration
@@ -176,9 +122,6 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
 
     // push to stream
     _isScanning.add(true);
-
-    /// add WinBle scanning
-    WinBle.startScanning();
 
     /// Flutter Blue Plus 1.15.X
     // var settings = BmScanSettings(
@@ -205,10 +148,11 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     /// Flutter Blue Plus 1.15.X
     // // invoke platform method
     // await _invokeMethod('startScan', settings.toMap());
-    //
-    // check every 250ms for gone devices?
+    /// add WinBle scanning
+    WinBle.startScanning();
 
-    late Stream<BleDevice> outputStream;
+    // check every 250ms for gone devices?
+    late Stream<BleDevice?> outputStream;
     if (removeIfGone != null) {
       outputStream = _mergeStreams(
           [WinBle.scanStream, Stream.periodic(Duration(milliseconds: 250))]);
@@ -219,52 +163,62 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     final output = <ScanResult>[];
 
     // listen & push to `scanResults` stream
-    _scanSubscription = outputStream.listen((BleDevice winBleDevice) {
-      final device = BluetoothDeviceWindows(
-        remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
-        localName: winBleDevice.name,
-        type: winBleDevice.adStructures
-                ?.where((e) => e.type == 1)
-                .singleOrNull
-                .toDeviceType() ??
-            BluetoothDeviceType.unknown,
-        rssi: int.tryParse(winBleDevice.rssi) ?? -100,
-      );
-      final sr = ScanResult(
-        device: device,
-        advertisementData: AdvertisementData(
-          localName: winBleDevice.name,
-          txPowerLevel: winBleDevice.adStructures
-              ?.where((e) => e.type == 10)
-              .singleOrNull
-              ?.data
-              .firstOrNull,
-          // TODO: Should verify
-          connectable: !winBleDevice.advType.contains('Non'),
-          manufacturerData: {
-            if (winBleDevice.manufacturerData.length >= 2)
-              winBleDevice.manufacturerData[0]:
-                  winBleDevice.manufacturerData.sublist(2),
-          },
-          // TODO: implementation missing
-          serviceData: {},
-          serviceUuids:
-              winBleDevice.serviceUuids.map((e) => e as String).toList(),
-        ),
-        rssi: int.tryParse(winBleDevice.rssi) ?? -100,
-        timeStamp: DateTime.now(),
-      );
+    _scanSubscription = outputStream.listen((BleDevice? winBleDevice) {
+      if (winBleDevice == null) {
+        // if null, this is just a periodic update
+        // for removing old results
+        output.removeWhere(
+            (elm) => DateTime.now().difference(elm.timeStamp) > removeIfGone!);
 
-      // add result to output
-      if (oneByOne) {
-        output.clear();
-        output.add(sr);
+        // push to stream
+        _scanResultsList.add(List.from(output));
       } else {
-        output.addOrUpdate(sr);
-      }
+        final device = BluetoothDeviceWindows(
+          remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
+          localName: winBleDevice.name,
+          type: winBleDevice.adStructures
+                  ?.where((e) => e.type == 1)
+                  .singleOrNull
+                  .toDeviceType() ??
+              BluetoothDeviceType.unknown,
+          rssi: int.tryParse(winBleDevice.rssi) ?? -100,
+        );
+        final sr = ScanResult(
+          device: device,
+          advertisementData: AdvertisementData(
+            localName: winBleDevice.name,
+            txPowerLevel: winBleDevice.adStructures
+                ?.where((e) => e.type == 10)
+                .singleOrNull
+                ?.data
+                .firstOrNull,
+            // TODO: Should verify
+            connectable: !winBleDevice.advType.contains('Non'),
+            manufacturerData: {
+              if (winBleDevice.manufacturerData.length >= 2)
+                winBleDevice.manufacturerData[0]:
+                    winBleDevice.manufacturerData.sublist(2),
+            },
+            // TODO: implementation missing
+            serviceData: {},
+            serviceUuids:
+                winBleDevice.serviceUuids.map((e) => e as String).toList(),
+          ),
+          rssi: int.tryParse(winBleDevice.rssi) ?? -100,
+          timeStamp: DateTime.now(),
+        );
 
-      // push to stream
-      _scanResultsList.add(List.from(output));
+        // add result to output
+        if (oneByOne) {
+          output.clear();
+          output.add(sr);
+        } else {
+          output.addOrUpdate(sr);
+        }
+
+        // push to stream
+        _scanResultsList.add(List.from(output));
+      }
     });
   }
 
