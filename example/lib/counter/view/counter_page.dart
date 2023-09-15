@@ -72,6 +72,12 @@ class _CounterViewState extends State<CounterView> {
           mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            FloatingActionButton(
+              onPressed: () async {
+                final list = await FlutterBluePlus.connectedSystemDevices;
+                print(list);
+              },
+            ),
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
@@ -80,13 +86,14 @@ class _CounterViewState extends State<CounterView> {
                   (results) async {
                     if (isFinished) return;
                     for (ScanResult r in results) {
-                      if (r.device.localName.startsWith('HEH001')) {
-                        print(r.device);
-                        await r.device.connect();
-                        isFinished = true;
-
-                        return;
-                      }
+                      print(r.device);
+                      // if (r.device.localName.startsWith('HEH001')) {
+                      //   print(r.device);
+                      //   await r.device.connect();
+                      //   isFinished = true;
+                      //
+                      //   return;
+                      // }
                     }
                   },
                 );
@@ -148,9 +155,7 @@ class _CounterViewState extends State<CounterView> {
               },
               child: const Icon(Icons.refresh),
             ),
-
             const SizedBox(height: 8),
-
             FloatingActionButton(
               onPressed: () async {
                 final scan = FlutterBluePlus.startScan(
