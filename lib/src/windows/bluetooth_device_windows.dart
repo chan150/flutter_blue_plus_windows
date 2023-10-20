@@ -6,8 +6,6 @@ part of 'windows.dart';
 class BluetoothDeviceWindows extends BluetoothDevice {
   BluetoothDeviceWindows({
     required super.remoteId,
-    required super.localName,
-    required super.type,
     this.rssi,
   });
 
@@ -216,7 +214,6 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     return 'BluetoothDevice{'
         'remoteId: $remoteId, '
         'localName: $localName, '
-        'type: $type, '
         'isDiscoveringServices: ${_isDiscoveringServices.value}, '
         'services: ${FlutterBluePlusWindows._knownServices[remoteId]}'
         '}';

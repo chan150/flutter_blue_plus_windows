@@ -175,12 +175,6 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
       } else {
         final device = BluetoothDeviceWindows(
           remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
-          localName: winBleDevice.name,
-          type: winBleDevice.adStructures
-                  ?.where((e) => e.type == 1)
-                  .singleOrNull
-                  .toDeviceType() ??
-              BluetoothDeviceType.unknown,
           rssi: int.tryParse(winBleDevice.rssi) ?? -100,
         );
         final sr = ScanResult(
