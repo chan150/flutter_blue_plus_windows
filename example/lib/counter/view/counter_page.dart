@@ -3,7 +3,7 @@ import 'dart:developer';
 import 'package:example/counter/counter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class CounterPage extends StatelessWidget {
   const CounterPage({super.key});

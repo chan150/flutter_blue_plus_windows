@@ -15,12 +15,15 @@ dependencies:
     sdk: flutter
   intl: ^0.18.1
 
-  flutter_blue_plus_windows:
-    path: ../
+  flutter_blue_plus: ^1.20.3
+#  flutter_blue_plus_windows:
+#    path: ../
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  build_runner: ^2.4.6
+  mockito: ^5.4.2
 
 flutter:
   uses-material-design: true
