@@ -1,6 +1,6 @@
 part of 'windows.dart';
 
-class FlutterBluePlusWindows extends FlutterBluePlus {
+class FlutterBluePlusWindows {
   static bool _initialized = false;
 
   static BluetoothAdapterState _state = BluetoothAdapterState.unknown;
@@ -35,7 +35,7 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     _initialized = true;
   }
 
-  static Future<bool> get isAvailable async {
+  static Future<bool> get isSupported async {
     await _initialize();
     return true;
   }
@@ -74,8 +74,7 @@ class FlutterBluePlusWindows extends FlutterBluePlus {
     );
   }
 
-  static Future<List<BluetoothDevice>> get connectedSystemDevices async {
-    await _initialize();
+  static List<BluetoothDevice> get connectedDevices {
     return _devices
         .where((device) => _connectedBehaviors[device]?.valueOrNull ?? false)
         .toList();
