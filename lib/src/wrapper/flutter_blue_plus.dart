@@ -96,7 +96,8 @@ class FlutterBluePlus {
     return Mobile.FlutterBluePlus.getPhySupport();
   }
 
-  static Future<List<BluetoothDevice>> get bondedDevices {
-    return Mobile.FlutterBluePlus.bondedDevices;
+  static Future<List<BluetoothDevice>> get bondedDevices async {
+    if (Platform.isWindows) return FlutterBluePlusWindows.connectedDevices;
+    return await Mobile.FlutterBluePlus.bondedDevices;
   }
 }

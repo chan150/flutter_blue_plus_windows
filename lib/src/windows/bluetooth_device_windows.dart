@@ -213,7 +213,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   String toString() {
     return 'BluetoothDevice{'
         'remoteId: $remoteId, '
-        'localName: $localName, '
+        'platformName: $platformName, '
         'isDiscoveringServices: ${_isDiscoveringServices.value}, '
         'services: ${FlutterBluePlusWindows._knownServices[remoteId]}'
         '}';
