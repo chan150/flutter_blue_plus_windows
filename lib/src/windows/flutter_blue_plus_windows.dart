@@ -119,31 +119,12 @@ class FlutterBluePlusWindows {
     // push to stream
     _isScanning.add(true);
 
-    /// Flutter Blue Plus 1.15.X
-    // var settings = BmScanSettings(
-    //             serviceUuids: withServices,
-    //             macAddresses: [],
-    //             allowDuplicates: true,
-    //             androidScanMode: ScanMode.lowLatency.value,
-    //             androidUsesFineLocation: androidUsesFineLocation);
-    //
-    //         Stream<BmScanResponse> responseStream = FlutterBluePlus._methodStream.stream
-    //             .where((m) => m.method == "OnScanResponse")
-    //             .map((m) => m.arguments)
-    //             .map((args) => BmScanResponse.fromMap(args));
-    //
-    //         // Start listening now, before invokeMethod, so we do not miss any results
-    //         _BufferStream<BmScanResponse> _scanBuffer = _BufferStream.listen(responseStream);
-
     // Start timer *after* stream is being listened to, to make sure the
     // timeout does not fire before _buffer is set
     if (timeout != null) {
       _scanTimeout = Timer(timeout, stopScan);
     }
 
-    /// Flutter Blue Plus 1.15.X
-    // // invoke platform method
-    // await _invokeMethod('startScan', settings.toMap());
     /// add WinBle scanning
     WinBle.startScanning();
 

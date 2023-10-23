@@ -3,7 +3,7 @@ import 'dart:developer';
 import 'package:example/counter/counter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 class CounterPage extends StatelessWidget {
   const CounterPage({super.key});
@@ -74,7 +74,7 @@ class _CounterViewState extends State<CounterView> {
           children: [
             FloatingActionButton(
               onPressed: () async {
-                final list = await FlutterBluePlus.connectedSystemDevices;
+                final list = await FlutterBluePlus.systemDevices;
                 print(list);
               },
             ),
@@ -84,7 +84,7 @@ class _CounterViewState extends State<CounterView> {
                 var isFinished = false;
                 var subscription = FlutterBluePlus.scanResults.listen(
                   (results) async {
-                    if (isFinished) return;
+                    // if (isFinished) return;
                     for (ScanResult r in results) {
                       print(r.device);
                       // if (r.device.localName.startsWith('HEH001')) {
@@ -120,7 +120,7 @@ class _CounterViewState extends State<CounterView> {
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
-                final connected = await FlutterBluePlus.connectedSystemDevices;
+                final connected = await FlutterBluePlus.systemDevices;
                 print(connected);
                 connected
                     .where((element) => element.localName.startsWith('HEH001'))
@@ -133,7 +133,7 @@ class _CounterViewState extends State<CounterView> {
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
-                final devices = await FlutterBluePlus.connectedSystemDevices;
+                final devices = await FlutterBluePlus.systemDevices;
                 print(devices);
 
                 if (devices.isNotEmpty) {
