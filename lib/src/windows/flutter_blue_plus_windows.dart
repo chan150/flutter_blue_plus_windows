@@ -24,12 +24,8 @@ class FlutterBluePlusWindows {
 
   static final _devices = <BluetoothDeviceWindows>[];
 
-  // static final _connectedBehaviors =
-  //     <DeviceIdentifier, BehaviorSubject<bool>>{};
-
-  static final _connectionState = _StreamController(
-    initialValue: <DeviceIdentifier, Stream<bool>>{},
-  );
+  static final _connectionStream =
+      _StreamController(initialValue: <String, dynamic>{});
 
   static Future<void> _initialize() async {
     if (_initialized) return;
@@ -37,6 +33,8 @@ class FlutterBluePlusWindows {
       serverPath: await WinServer.path,
       enableLog: false,
     );
+
+    WinBle.connectionStream.listen((event) => _connectionStream.add(event));
     _initialized = true;
   }
 

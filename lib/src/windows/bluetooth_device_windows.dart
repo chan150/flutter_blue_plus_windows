@@ -152,27 +152,15 @@ class BluetoothDeviceWindows extends BluetoothDevice {
 
   Stream<BluetoothConnectionState> get connectionState async* {
     await FlutterBluePlusWindows._initialize();
+    print('1 ---------------------');
 
-    final event = FlutterBluePlusWindows._connectionState.latestValue;
-    event.putIfAbsent(
-      remoteId,
-      () {
-        return WinBle.connectionStreamOf(_address);
-        // FlutterBluePlusWindows._connectionState.add(event);
-        // final streamController = StreamController<bool>();
-        // WinBle.connectionStreamOf(_address).listen((event) =>
-        //     streamController.add(event));
-        // return streamController.stream;
-      },
-    );
+    print('2 ---------------------');
 
-    await for (final state in FlutterBluePlusWindows._connectionState.stream) {
-      if (state[remoteId] == null) continue;
-      await for(final event in state[remoteId]!){
-        if(event) yield BluetoothConnectionState.connected;
-        else yield BluetoothConnectionState.disconnected;
-      }
-    }
+    print('3 ---------------------');
+
+    print('4 ---------------------');
+
+    print('5 ---------------------');
 
     // BluetoothConnectionState prev = BluetoothConnectionState.disconnected;
     // await for(final states in WinBle.connectionStream){
