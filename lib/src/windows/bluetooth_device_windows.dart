@@ -5,11 +5,14 @@ part of 'windows.dart';
 
 class BluetoothDeviceWindows extends BluetoothDevice {
   BluetoothDeviceWindows({
+    required this.platformName,
     required super.remoteId,
     this.rssi,
   });
 
   final int? rssi;
+
+  final String platformName;
 
   // used for 'servicesStream' public api
   final _services = StreamController<List<BluetoothServiceWindows>>.broadcast();

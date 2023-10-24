@@ -151,6 +151,7 @@ class FlutterBluePlusWindows {
         _scanResultsList.add(List.from(output));
       } else {
         final device = BluetoothDeviceWindows(
+          platformName: winBleDevice.name,
           remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
           rssi: int.tryParse(winBleDevice.rssi) ?? -100,
         );
