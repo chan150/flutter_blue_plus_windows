@@ -83,6 +83,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     int timeout = 35, // TODO: implementation missing
   }) async {
     try {
+      await WinBle.unPair(_address);
       await WinBle.disconnect(_address);
       FlutterBluePlusWindows._devices
           .removeWhere((e) => e.remoteId == remoteId);
