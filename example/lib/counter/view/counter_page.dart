@@ -77,38 +77,35 @@ class _CounterViewState extends State<CounterView> {
             FloatingActionButton(
               onPressed: () async {
                 var isFinished = false;
-                var subscription = FlutterBluePlus.scanResults.listen(
-                  (results) async {
-                    // if (isFinished) return;
+                Set<DeviceIdentifier> seen = {};
+
+                FlutterBluePlus.scanResults.listen(
+                  (results) {
                     for (ScanResult r in results) {
-                      print(r.device);
-                      // if (r.device.localName.startsWith('HEH001')) {
-                      //   print(r.device);
-                      //   await r.device.connect();
-                      //   isFinished = true;
-                      //
-                      //   return;
-                      // }
+                      if (isFinished) return;
+                      if (seen.contains(r.device.remoteId) == false) {
+                        print(r.device.platformName);
+                        seen.add(r.device.remoteId);
+                      }
+
+                      if (r.device.platformName.startsWith('HEH001')) {
+                        print(r.device.platformName);
+                        r.device
+                            .connect()
+                            .whenComplete(() => isFinished = true);
+                      }
                     }
                   },
                 );
 
-                await FlutterBluePlus.startScan(timeout: Duration(seconds: 4));
+                // Start scanning
+                await FlutterBluePlus.startScan();
 
+                await Future.delayed(const Duration(seconds: 3));
+
+                // Stop scanning
                 await FlutterBluePlus.stopScan();
-                subscription.cancel();
-
-                // final a = await WinBle.discoverServices('cc:17:8a:a0:2a:18');
-                // print(a);
-                // for(final c in a){
-                //   print('$c =================');
-                //   final b = await WinBle.discoverCharacteristics(address: 'cc:17:8a:a0:2a:18', serviceId: c);
-                //   for(final d in b) {
-                //     print(d.uuid);
-                //   }
-                // }
-                // WinBle.pair('cc:17:8a:a0:2a:18');
-                // WinBle.pair('cc:17:8a:a0:2a:18'.toLowerCase());
+                print(seen);
               },
               child: const Icon(Icons.bluetooth),
             ),
@@ -118,7 +115,8 @@ class _CounterViewState extends State<CounterView> {
                 final connected = await FlutterBluePlus.systemDevices;
                 print(connected);
                 connected
-                    .where((element) => element.localName.startsWith('HEH001'))
+                    .where(
+                        (element) => element.platformName.startsWith('HEH001'))
                     .lastOrNull
                     ?.disconnect();
                 // await WinBle.disconnect('cc:17:8a:a0:2a:18'.toLowerCase());

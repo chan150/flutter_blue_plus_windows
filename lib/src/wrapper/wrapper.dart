@@ -1,1 +1,1 @@
-export 'flutter_blue_plus.dart';
+export 'flutter_blue_plus_wrapper.dart';
