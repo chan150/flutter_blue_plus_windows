@@ -28,25 +28,20 @@ class _CounterViewState extends State<CounterView> {
       child: Scaffold(
         body: Column(
           children: [
-            if (_device != null)
-              Column(
-                children: [
-                  StreamBuilder(
-                    stream: _device!.connectionState,
-                    builder: (context, snapshot) {
-                      print('Connection state : ${snapshot.data}');
-                      return Text('Connection state : ${snapshot.data}');
-                    },
-                  ),
-                  StreamBuilder(
-                    stream: _device!.mtu,
-                    builder: (context, snapshot) {
-                      print('Con');
-                      return Text(snapshot.data.toString());
-                    },
-                  ),
-                ],
-              ),
+            StreamBuilder(
+              stream: Stream.periodic(
+                  const Duration(seconds: 2), (_) => _device),
+              builder: (context, snapshot) {
+                return Text('device : ${snapshot.data}');
+              },
+            ),
+            StreamBuilder(
+              stream: _device?.connectionState,
+              builder: (context, snapshot) {
+                print('Connection state : ${snapshot.data}');
+                return Text('Connection state : ${snapshot.data}');
+              },
+            ),
             // StreamBuilder(
             //   // stream: WinBle.connectionStream,
             //   stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
@@ -80,7 +75,7 @@ class _CounterViewState extends State<CounterView> {
                 Set<DeviceIdentifier> seen = {};
 
                 FlutterBluePlus.scanResults.listen(
-                  (results) {
+                      (results) {
                     for (ScanResult r in results) {
                       if (isFinished) return;
                       if (seen.contains(r.device.remoteId) == false) {
