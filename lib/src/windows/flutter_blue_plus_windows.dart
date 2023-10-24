@@ -36,17 +36,14 @@ class FlutterBluePlusWindows {
   }
 
   static Future<bool> get isSupported async {
-    await _initialize();
     return true;
   }
 
   static Future<String> get adapterName async {
-    await _initialize();
     return 'Windows';
   }
 
   static Stream<bool> get isScanning async* {
-    await _initialize();
     await for (final s in _isScanning.stream) {
       yield s;
     }
@@ -81,20 +78,8 @@ class FlutterBluePlusWindows {
   }
 
   static Future<List<BluetoothDevice>> get bondedDevices async {
-    await _initialize();
     return _devices;
   }
-
-  @Deprecated('removed. use startScan with the oneByOne option instead')
-  static Stream<ScanResult> scan({
-    ScanMode scanMode = ScanMode.lowLatency,
-    List<Guid> withServices = const [],
-    List<String> macAddresses = const [],
-    Duration? timeout,
-    bool allowDuplicates = false,
-    bool androidUsesFineLocation = false,
-  }) =>
-      throw Exception;
 
   /// Start a scan, and return a stream of results
   ///   - [timeout] calls stopScan after a specified duration

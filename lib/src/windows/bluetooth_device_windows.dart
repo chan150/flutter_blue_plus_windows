@@ -85,7 +85,8 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }) async {
     try {
       await WinBle.disconnect(_address);
-      // FlutterBluePlusWindows._devices.remove(this);
+      FlutterBluePlusWindows._devices
+          .removeWhere((e) => e.remoteId == remoteId);
     } catch (e) {
       print(e);
     }
@@ -152,6 +153,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
 
   Stream<BluetoothConnectionState> get connectionState async* {
     await for (final state in WinBle.connectionStreamOf(_address)) {
+      print(state);
       if (state) yield BluetoothConnectionState.connected;
       yield BluetoothConnectionState.disconnected;
     }

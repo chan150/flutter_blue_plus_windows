@@ -29,8 +29,8 @@ class _CounterViewState extends State<CounterView> {
         body: Column(
           children: [
             StreamBuilder(
-              stream: Stream.periodic(
-                  const Duration(seconds: 2), (_) => _device),
+              stream:
+                  Stream.periodic(const Duration(seconds: 2), (_) => _device),
               builder: (context, snapshot) {
                 return Text('device : ${snapshot.data}');
               },
@@ -73,21 +73,17 @@ class _CounterViewState extends State<CounterView> {
               onPressed: () async {
                 var isFinished = false;
                 Set<DeviceIdentifier> seen = {};
-
                 FlutterBluePlus.scanResults.listen(
-                      (results) {
+                  (results) {
                     for (ScanResult r in results) {
                       if (isFinished) return;
                       if (seen.contains(r.device.remoteId) == false) {
-                        print(r.device.platformName);
                         seen.add(r.device.remoteId);
                       }
 
                       if (r.device.platformName.startsWith('HEH001')) {
-                        print(r.device.platformName);
-                        r.device
-                            .connect()
-                            .whenComplete(() => isFinished = true);
+                        isFinished = true;
+                        r.device.connect();
                       }
                     }
                   },
@@ -126,6 +122,8 @@ class _CounterViewState extends State<CounterView> {
 
                 if (devices.isNotEmpty) {
                   _device = devices.first;
+                } else {
+                  _device = null;
                 }
                 setState(() {});
               },
@@ -142,17 +140,6 @@ class _CounterViewState extends State<CounterView> {
                 }
               },
               child: const Icon(Icons.refresh),
-            ),
-            const SizedBox(height: 8),
-            FloatingActionButton(
-              onPressed: () async {
-                final scan = FlutterBluePlus.startScan(
-                  timeout: const Duration(seconds: 2),
-                );
-
-                // await scan.then((value) => print(value));
-              },
-              child: const Icon(Icons.new_label),
             ),
           ],
         ),
