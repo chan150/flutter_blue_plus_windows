@@ -1,7 +1,9 @@
 part of 'windows.dart';
 
 String _hexEncode(List<int> numbers) {
-  return numbers.map((n) => (n & 0xFF).toRadixString(16).padLeft(2, '0')).join();
+  return numbers
+      .map((n) => (n & 0xFF).toRadixString(16).padLeft(2, '0'))
+      .join();
 }
 
 List<int> _hexDecode(String hex) {
@@ -49,7 +51,8 @@ class _StreamController<T> {
 
   final StreamController<T> _controller = StreamController<T>.broadcast();
 
-  _StreamController({required T initialValue}) : this.latestValue = initialValue;
+  _StreamController({required T initialValue})
+      : this.latestValue = initialValue;
 
   Stream<T> get stream => _controller.stream;
 
@@ -60,9 +63,11 @@ class _StreamController<T> {
     _controller.add(newValue);
   }
 
-  void listen(Function(T) onData, {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+  void listen(Function(T) onData,
+      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
     onData(latestValue);
-    _controller.stream.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+    _controller.stream.listen(onData,
+        onError: onError, onDone: onDone, cancelOnError: cancelOnError);
   }
 
   Future<void> close() {
@@ -94,7 +99,7 @@ class _BufferStream<T> {
 
     // immediately start listening to the inputStream
     _subscription = _inputStream.listen(
-          (data) {
+      (data) {
         hasReceivedValue = true;
         _controller.add(data);
       },
@@ -168,7 +173,8 @@ class _OnDoneTransformer<T> extends StreamTransformerBase<T, T> {
 
     controller = StreamController<T>.broadcast(
       onListen: () {
-        subscription = stream.listen(controller?.add, onError: controller?.addError, onDone: () {
+        subscription = stream
+            .listen(controller?.add, onError: controller?.addError, onDone: () {
           onDone();
           controller?.close();
         });
@@ -256,7 +262,8 @@ class _OnCancelTransformer<T> extends StreamTransformerBase<T, T> {
 }
 
 // Helper for 'newStreamWithInitialValue' method for streams.
-class _NewStreamWithInitialValueTransformer<T> extends StreamTransformerBase<T, T> {
+class _NewStreamWithInitialValueTransformer<T>
+    extends StreamTransformerBase<T, T> {
   final T initialValue;
 
   _NewStreamWithInitialValueTransformer(this.initialValue);
@@ -344,7 +351,8 @@ Stream<T> _mergeStreams<T>(List<Stream<T>> streams) {
   }
 
   void subscribeToStream(Stream<T> stream) {
-    final s = stream.listen(handleData, onError: handleError, onDone: handleDone);
+    final s =
+        stream.listen(handleData, onError: handleError, onDone: handleDone);
     subscriptions.add(s);
   }
 
@@ -417,4 +425,9 @@ String _brown(String s) {
   return '\x1B[1;33m$s\x1B[0m';
 }
 
-
+extension Boolean2ConnectionState on bool {
+  BluetoothConnectionState get isConnected {
+    if (this) return BluetoothConnectionState.connected;
+    return BluetoothConnectionState.disconnected;
+  }
+}

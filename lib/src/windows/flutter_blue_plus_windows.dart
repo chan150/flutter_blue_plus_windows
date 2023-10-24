@@ -25,7 +25,7 @@ class FlutterBluePlusWindows {
   static final _devices = <BluetoothDeviceWindows>[];
 
   static final _connectionStream =
-      _StreamController(initialValue: <String, dynamic>{});
+      _StreamController(initialValue: <String, bool>{});
 
   static Future<void> _initialize() async {
     if (_initialized) return;
@@ -34,7 +34,15 @@ class FlutterBluePlusWindows {
       enableLog: false,
     );
 
-    WinBle.connectionStream.listen((event) => _connectionStream.add(event));
+    WinBle.connectionStream.listen((event) {
+      if(event['device']==null) return;
+      if(event['connected']==null) return;
+
+      final map = _connectionStream.latestValue;
+      map[event['device']] = event['connected'];
+      print(map);
+      _connectionStream.add(map);
+    });
     _initialized = true;
   }
 

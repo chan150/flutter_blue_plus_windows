@@ -48,20 +48,6 @@ class _CounterViewState extends State<CounterView> {
                 return Text(snapshot.data.toString());
               },
             ),
-            // StreamBuilder(
-            //   // stream: WinBle.connectionStream,
-            //   stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
-            //   builder: (context, snapshot) {
-            //     return Text(snapshot.data.toString());
-            //   },
-            // ),
-            // StreamBuilder(
-            //   // stream: WinBle.connectionStream,
-            //   stream: WinBle.connectionStreamOf('d7:d4:7c:61:1d:c7'),
-            //   builder: (context, snapshot) {
-            //     return Text(snapshot.data.toString());
-            //   },
-            // ),
           ],
         ),
         floatingActionButton: Column(
@@ -88,6 +74,38 @@ class _CounterViewState extends State<CounterView> {
                       }
 
                       if (r.device.platformName.startsWith('HEH001')) {
+                        isFinished = true;
+                        r.device.connect();
+                      }
+                    }
+                  },
+                );
+
+                // Start scanning
+                await FlutterBluePlus.startScan();
+
+                await Future.delayed(const Duration(seconds: 3));
+
+                // Stop scanning
+                await FlutterBluePlus.stopScan();
+                print(seen);
+              },
+              child: const Icon(Icons.bluetooth),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              onPressed: () async {
+                var isFinished = false;
+                Set<DeviceIdentifier> seen = {};
+                FlutterBluePlus.scanResults.listen(
+                      (results) {
+                    for (ScanResult r in results) {
+                      if (isFinished) return;
+                      if (seen.contains(r.device.remoteId) == false) {
+                        seen.add(r.device.remoteId);
+                      }
+
+                      if (r.device.platformName.startsWith('C-Click')) {
                         isFinished = true;
                         r.device.connect();
                       }

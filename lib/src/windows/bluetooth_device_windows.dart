@@ -154,7 +154,16 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     await FlutterBluePlusWindows._initialize();
     print('1 ---------------------');
 
+    final map = FlutterBluePlusWindows._connectionStream.latestValue;
+    if(map[_address]!=null) {
+      yield map[_address]!.isConnected;
+    }
+
     print('2 ---------------------');
+
+    await for (final event in WinBle.connectionStreamOf(_address)) {
+      yield event.isConnected;
+    }
 
     print('3 ---------------------');
 
