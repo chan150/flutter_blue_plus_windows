@@ -23,8 +23,13 @@ class FlutterBluePlusWindows {
   static Timer? _scanTimeout;
 
   static final _devices = <BluetoothDeviceWindows>[];
+
   // static final _connectedBehaviors =
   //     <DeviceIdentifier, BehaviorSubject<bool>>{};
+
+  static final _connectionState = _StreamController(
+    initialValue: <DeviceIdentifier, Stream<bool>>{},
+  );
 
   static Future<void> _initialize() async {
     if (_initialized) return;

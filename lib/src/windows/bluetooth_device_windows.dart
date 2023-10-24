@@ -151,14 +151,45 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Stream<BluetoothConnectionState> get connectionState async* {
-    FlutterBluePlusWindows._initialize();
-    // BluetoothConnectionState? prev = BluetoothConnectionState.disconnected;
+    await FlutterBluePlusWindows._initialize();
 
-    await for (final state in WinBle.connectionStreamOf(_address)) {
-    //   print(state);
-    //   if (state) yield BluetoothConnectionState.connected;
-    //   yield BluetoothConnectionState.disconnected;
+    final event = FlutterBluePlusWindows._connectionState.latestValue;
+    event.putIfAbsent(
+      remoteId,
+      () {
+        return WinBle.connectionStreamOf(_address);
+        // FlutterBluePlusWindows._connectionState.add(event);
+        // final streamController = StreamController<bool>();
+        // WinBle.connectionStreamOf(_address).listen((event) =>
+        //     streamController.add(event));
+        // return streamController.stream;
+      },
+    );
+
+    await for (final state in FlutterBluePlusWindows._connectionState.stream) {
+      if (state[remoteId] == null) continue;
+      await for(final event in state[remoteId]!){
+        if(event) yield BluetoothConnectionState.connected;
+        else yield BluetoothConnectionState.disconnected;
+      }
     }
+
+    // BluetoothConnectionState prev = BluetoothConnectionState.disconnected;
+    // await for(final states in WinBle.connectionStream){
+    //   print(' ================================ $states');
+    //   if(states['device'] != _address) break;
+    //   if(states['connected'] != true) break;
+    //   prev = BluetoothConnectionState.connected;
+    //   break;
+    // }
+    //
+    // yield prev;
+    //
+    // await for (final state in WinBle.connectionStreamOf(_address)) {
+    //   print(' ================================ $state');
+    //   if (state) yield BluetoothConnectionState.connected;
+    //   else yield BluetoothConnectionState.disconnected;
+    // }
   }
 
   Stream<int> get mtu async* {
