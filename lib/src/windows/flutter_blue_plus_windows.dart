@@ -72,9 +72,10 @@ class FlutterBluePlusWindows {
   }
 
   static List<BluetoothDevice> get connectedDevices {
-    return _devices
-        .where((device) => _connectedBehaviors[device]?.valueOrNull ?? false)
-        .toList();
+    return _devices;
+    // return _devices
+    //     .where((device) => _connectedBehaviors[device]?.valueOrNull ?? false)
+    //     .toList();
   }
 
   static Future<List<BluetoothDevice>> get bondedDevices async {
