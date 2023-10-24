@@ -22,7 +22,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   // used for 'isDiscoveringServices' public api
   final _isDiscoveringServices = _StreamController(initialValue: false);
 
-  StreamSubscription<bool>? _subscription;
+  // StreamSubscription<bool>? _subscription;
 
   String get _address => remoteId.str.toLowerCase();
 
@@ -64,17 +64,16 @@ class BluetoothDeviceWindows extends BluetoothDevice {
       if (!existed) {
         FlutterBluePlusWindows._devices.add(this);
       }
-      _subscription?.cancel();
-      FlutterBluePlusWindows._connectedBehaviors[this] = BehaviorSubject();
-
-      _subscription = WinBle.connectionStreamOf(_address).listen(
-        (event) {
-          FlutterBluePlusWindows._connectedBehaviors[this]?.add(event);
-          if (!event) {
-            _subscription?.cancel();
-          }
-        },
-      );
+      // _subscription?.cancel();
+      // FlutterBluePlusWindows._connectedBehaviors[remoteId] = BehaviorSubject();
+      // _subscription = WinBle.connectionStreamOf(_address).listen(
+      //   (event) {
+      //     FlutterBluePlusWindows._connectedBehaviors[remoteId]?.add(event);
+      //     if (!event) {
+      //       _subscription?.cancel();
+      //     }
+      //   },
+      // );
     } catch (e) {
       print(e);
     }
@@ -152,10 +151,13 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Stream<BluetoothConnectionState> get connectionState async* {
+    FlutterBluePlusWindows._initialize();
+    // BluetoothConnectionState? prev = BluetoothConnectionState.disconnected;
+
     await for (final state in WinBle.connectionStreamOf(_address)) {
-      print(state);
-      if (state) yield BluetoothConnectionState.connected;
-      yield BluetoothConnectionState.disconnected;
+    //   print(state);
+    //   if (state) yield BluetoothConnectionState.connected;
+    //   yield BluetoothConnectionState.disconnected;
     }
   }
 
@@ -219,7 +221,6 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     return 'BluetoothDevice{'
         'remoteId: $remoteId, '
         'platformName: $platformName, '
-        'isDiscoveringServices: ${_isDiscoveringServices.value}, '
         'services: ${FlutterBluePlusWindows._knownServices[remoteId]}'
         '}';
   }

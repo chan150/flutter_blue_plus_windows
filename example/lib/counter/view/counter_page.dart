@@ -42,6 +42,12 @@ class _CounterViewState extends State<CounterView> {
                 return Text('Connection state : ${snapshot.data}');
               },
             ),
+            StreamBuilder(
+              stream: WinBle.connectionStream,
+              builder: (context, snapshot) {
+                return Text(snapshot.data.toString());
+              },
+            ),
             // StreamBuilder(
             //   // stream: WinBle.connectionStream,
             //   stream: WinBle.connectionStreamOf('cc:17:8a:a0:2a:18'),
