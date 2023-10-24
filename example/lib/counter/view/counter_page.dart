@@ -122,7 +122,7 @@ class _CounterViewState extends State<CounterView> {
                 await FlutterBluePlus.stopScan();
                 print(seen);
               },
-              child: const Icon(Icons.bluetooth),
+              child: const Icon(Icons.bluetooth, color: Colors.red,),
             ),
             const SizedBox(height: 8),
             FloatingActionButton(
@@ -137,6 +137,20 @@ class _CounterViewState extends State<CounterView> {
                 // await WinBle.disconnect('cc:17:8a:a0:2a:18'.toLowerCase());
               },
               child: const Icon(Icons.bluetooth_disabled),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              onPressed: () async {
+                final connected = await FlutterBluePlus.systemDevices;
+                print(connected);
+                connected
+                    .where(
+                        (element) => element.platformName.startsWith('C-Click'))
+                    .lastOrNull
+                    ?.disconnect();
+                // await WinBle.disconnect('cc:17:8a:a0:2a:18'.toLowerCase());
+              },
+              child: const Icon(Icons.bluetooth_disabled, color: Colors.red,),
             ),
             const SizedBox(height: 8),
             FloatingActionButton(

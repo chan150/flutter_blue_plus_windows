@@ -58,22 +58,15 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }) async {
     try {
       await WinBle.connect(_address);
+      // if(await WinBle.canPair(_address)){
+      //   await WinBle.pair(_address);
+      // }
       final existed = FlutterBluePlusWindows._devices
           .where((e) => e.remoteId == remoteId)
           .isNotEmpty;
       if (!existed) {
         FlutterBluePlusWindows._devices.add(this);
       }
-      // _subscription?.cancel();
-      // FlutterBluePlusWindows._connectedBehaviors[remoteId] = BehaviorSubject();
-      // _subscription = WinBle.connectionStreamOf(_address).listen(
-      //   (event) {
-      //     FlutterBluePlusWindows._connectedBehaviors[remoteId]?.add(event);
-      //     if (!event) {
-      //       _subscription?.cancel();
-      //     }
-      //   },
-      // );
     } catch (e) {
       print(e);
     }
