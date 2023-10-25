@@ -11,6 +11,8 @@ class FlutterBluePlusWindows {
   // we always keep track of these device variables
   static final _knownServices =
       <DeviceIdentifier, List<BluetoothServiceWindows>>{};
+  static final Map<DeviceIdentifier, Map<String, List<int>>> _lastChrs = {};
+  static final Map<DeviceIdentifier, Map<String, bool>> _isNotifying = {};
 
   // stream used for the scanResults public api
   static final _scanResultsList =
@@ -24,6 +26,7 @@ class FlutterBluePlusWindows {
 
   static final _devices = <BluetoothDeviceWindows>[];
 
+  /// newly defined
   static final _connectionStream =
       _StreamController(initialValue: <String, bool>{});
 
@@ -35,8 +38,8 @@ class FlutterBluePlusWindows {
     );
 
     WinBle.connectionStream.listen((event) {
-      if(event['device']==null) return;
-      if(event['connected']==null) return;
+      if (event['device'] == null) return;
+      if (event['connected'] == null) return;
 
       final map = _connectionStream.latestValue;
       map[event['device']] = event['connected'];
