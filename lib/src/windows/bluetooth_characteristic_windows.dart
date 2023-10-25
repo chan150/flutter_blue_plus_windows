@@ -130,12 +130,14 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
           serviceId: serviceUuid.toString(),
           characteristicId: characteristicUuid.toString(),
         );
+        FlutterBluePlusWindows._notifiedChrs[remoteId]?.addOrUpdate(this);
       } else {
         await WinBle.unSubscribeFromCharacteristic(
           address: _address,
           serviceId: serviceUuid.toString(),
           characteristicId: characteristicUuid.toString(),
         );
+        FlutterBluePlusWindows._notifiedChrs[remoteId]?.remove(this);
       }
       FlutterBluePlusWindows._isNotifying[remoteId]?[_key] = notify;
     } catch (e) {

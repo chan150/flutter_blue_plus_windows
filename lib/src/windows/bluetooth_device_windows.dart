@@ -82,9 +82,11 @@ class BluetoothDeviceWindows extends BluetoothDevice {
       await WinBle.disconnect(_address);
       FlutterBluePlusWindows._devices
           .removeWhere((e) => e.remoteId == remoteId);
-      FlutterBluePlusWindows._lastChrs[remoteId]?.removeWhere((_, __) => true);
-      FlutterBluePlusWindows._isNotifying[remoteId]
-          ?.removeWhere((_, __) => true);
+      final shouldRemoveChrs =
+          List.from(FlutterBluePlusWindows._notifiedChrs[remoteId] ?? []);
+      shouldRemoveChrs.forEach((e) => e.setNotifyValue(false));
+      FlutterBluePlusWindows._lastChrs[remoteId]?.clear();
+      FlutterBluePlusWindows._isNotifying[remoteId]?.clear();
     } catch (e) {
       print(e);
     }
