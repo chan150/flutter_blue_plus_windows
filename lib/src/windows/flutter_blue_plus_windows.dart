@@ -13,8 +13,8 @@ class FlutterBluePlusWindows {
       <DeviceIdentifier, List<BluetoothServiceWindows>>{};
   static final Map<DeviceIdentifier, Map<String, List<int>>> _lastChrs = {};
   static final Map<DeviceIdentifier, Map<String, bool>> _isNotifying = {};
-  static final Map<DeviceIdentifier, List<BluetoothCharacteristicWindows>>
-      _notifiedChrs = {};
+  // static final Map<DeviceIdentifier, List<BluetoothCharacteristicWindows>>
+  //     _notifiedChrs = {};
 
   // stream used for the scanResults public api
   static final _scanResultsList =

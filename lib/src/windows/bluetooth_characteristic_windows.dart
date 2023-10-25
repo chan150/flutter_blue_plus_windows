@@ -123,6 +123,19 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
     bool notify, {
     int timeout = 15, // TODO: missing implementation
   }) async {
+    /// unSubscribeFromCharacteristic
+    try {
+      await WinBle.unSubscribeFromCharacteristic(
+        address: _address,
+        serviceId: serviceUuid.toString(),
+        characteristicId: characteristicUuid.toString(),
+      );
+    } catch (e) {
+      log('WinBle.unSubscribeFromCharacteristic was performed '
+          'before setNotifyValue()');
+    }
+
+    /// set notify
     try {
       if (notify) {
         await WinBle.subscribeToCharacteristic(
@@ -130,14 +143,9 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
           serviceId: serviceUuid.toString(),
           characteristicId: characteristicUuid.toString(),
         );
-        FlutterBluePlusWindows._notifiedChrs[remoteId]?.addOrUpdate(this);
+        // FlutterBluePlusWindows._notifiedChrs[remoteId]?.addOrUpdate(this);
       } else {
-        await WinBle.unSubscribeFromCharacteristic(
-          address: _address,
-          serviceId: serviceUuid.toString(),
-          characteristicId: characteristicUuid.toString(),
-        );
-        FlutterBluePlusWindows._notifiedChrs[remoteId]?.remove(this);
+        // FlutterBluePlusWindows._notifiedChrs[remoteId]?.remove(this);
       }
       FlutterBluePlusWindows._isNotifying[remoteId]?[_key] = notify;
     } catch (e) {
