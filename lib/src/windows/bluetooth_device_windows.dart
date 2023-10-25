@@ -10,6 +10,8 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     this.rssi,
   });
 
+  static final _cachedMap = <DeviceIdentifier, BluetoothDeviceWindows>{};
+
   final int? rssi;
 
   final String platformName;
@@ -80,6 +82,9 @@ class BluetoothDeviceWindows extends BluetoothDevice {
       await WinBle.disconnect(_address);
       FlutterBluePlusWindows._devices
           .removeWhere((e) => e.remoteId == remoteId);
+      FlutterBluePlusWindows._lastChrs[remoteId]?.removeWhere((_, __) => true);
+      FlutterBluePlusWindows._isNotifying[remoteId]
+          ?.removeWhere((_, __) => true);
     } catch (e) {
       print(e);
     }
@@ -148,7 +153,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     await FlutterBluePlusWindows._initialize();
 
     final map = FlutterBluePlusWindows._connectionStream.latestValue;
-    if(map[_address]!=null) {
+    if (map[_address] != null) {
       yield map[_address]!.isConnected;
     }
 

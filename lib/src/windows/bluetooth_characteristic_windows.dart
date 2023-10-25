@@ -73,20 +73,23 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
   ///   - and when first listened to, it re-emits the last value for convenience
   // TODO: need to verify
   Stream<List<int>> get lastValueStream => WinBle.characteristicValueStreamOf(
-        address: remoteId.str.toLowerCase(),
+        address: _address,
         serviceId: serviceUuid.toString(),
         characteristicId: characteristicUuid.toString(),
-      ).map((p) => <int>[...p]).newStreamWithInitialValue(lastValue);
+      )
+          .map((p) => <int>[...p])
+          .newStreamWithInitialValue(lastValue)
+          .asBroadcastStream();
 
   /// this stream emits values:
   ///   - anytime `read()` is called (TODO: does not work)
   ///   - anytime a notification arrives (if subscribed)
   // TODO: need to verify
   Stream<List<int>> get onValueReceived => WinBle.characteristicValueStreamOf(
-        address: remoteId.str.toLowerCase(),
+        address: _address,
         serviceId: serviceUuid.toString(),
         characteristicId: characteristicUuid.toString(),
-      ).map((p) => <int>[...p]);
+      ).map((p) => <int>[...p]).asBroadcastStream();
 
   // TODO: implementation is required
   bool get isNotifying =>
@@ -94,7 +97,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
 
   Future<List<int>> read({int timeout = 15}) async {
     final value = await WinBle.read(
-      address: remoteId.str.toLowerCase(),
+      address: _address,
       serviceId: serviceUuid.toString(),
       characteristicId: characteristicUuid.toString(),
     );

@@ -164,14 +164,14 @@ class FlutterBluePlusWindows {
                 .singleOrNull
                 ?.data
                 .firstOrNull,
-            // TODO: Should verify
+            //TODO: Should verify
             connectable: !winBleDevice.advType.contains('Non'),
             manufacturerData: {
               if (winBleDevice.manufacturerData.length >= 2)
                 winBleDevice.manufacturerData[0]:
                     winBleDevice.manufacturerData.sublist(2),
             },
-            // TODO: implementation missing
+            //TODO: implementation missing
             serviceData: {},
             serviceUuids:
                 winBleDevice.serviceUuids.map((e) => e as String).toList(),
