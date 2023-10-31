@@ -78,11 +78,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     int timeout = 35, // TODO: implementation missing
   }) async {
     try {
-      // final shouldRemoveChrs =
-      //     List.from(FlutterBluePlusWindows._notifiedChrs[remoteId] ?? []);
-      // shouldRemoveChrs.forEach((e) async => await e.setNotifyValue(false));
-
-      await WinBle.unPair(_address);
+      // await WinBle.unPair(_address);
       await WinBle.disconnect(_address);
 
       FlutterBluePlusWindows._devices
@@ -157,11 +153,15 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     await FlutterBluePlusWindows._initialize();
 
     final map = FlutterBluePlusWindows._connectionStream.latestValue;
+
+    log('===================== ${map[_address]} =================');
+
     if (map[_address] != null) {
       yield map[_address]!.isConnected;
     }
 
     await for (final event in WinBle.connectionStreamOf(_address)) {
+      log('===================== $event =================');
       yield event.isConnected;
     }
   }
@@ -198,13 +198,24 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     // TODO: implementation missing
   }
 
-  Future<void> createBond({int timeout = 90}) async {
-    await WinBle.pair(_address);
+  Future<void> createBond({
+    int timeout = 90, // TODO: implementation missing
+  }) async {
+    try {
+      await WinBle.pair(_address);
+    } catch (e) {
+      log(e.toString());
+    }
   }
 
-  Future<void> removeBond({int timeout = 30}) async {
-    await WinBle.unPair(_address);
-    // TODO: implementation missing
+  Future<void> removeBond({
+    int timeout = 30, // TODO: implementation missing
+  }) async {
+    try {
+      await WinBle.unPair(_address);
+    } catch (e) {
+      log(e.toString());
+    }
   }
 
   Future<void> clearGattCache() async {

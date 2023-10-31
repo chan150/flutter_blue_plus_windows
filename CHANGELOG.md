@@ -1,3 +1,6 @@
+## 1.5.0
+* Split functionality of `disconnect` / `removeBond`
+
 ## 1.4.0
 * Implement `Subscribe/Unsubscribe Characteristic`.
 
