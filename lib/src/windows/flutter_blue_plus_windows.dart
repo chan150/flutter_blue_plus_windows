@@ -42,13 +42,14 @@ class FlutterBluePlusWindows {
 
     WinBle.connectionStream.listen(
       (event) {
+        log('$event - event');
         if (event['device'] == null) return;
         if (event['connected'] == null) return;
 
         final map = _connectionStream.latestValue;
         map[event['device']] = event['connected'];
 
-        log(map.toString());
+        log('$map - map');
         _connectionStream.add(map);
 
         if (!event['connected']) {
