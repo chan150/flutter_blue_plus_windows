@@ -45,8 +45,10 @@ class FlutterBluePlusWindows {
 
       final map = _connectionStream.latestValue;
       map[event['device']] = event['connected'];
-      print(map);
+
+      log(map.toString());
       _connectionStream.add(map);
+      _devices.removeWhere((device) => device._address == event['device']);
     });
     _initialized = true;
   }
