@@ -1,3 +1,6 @@
+## 1.5.2
+* Fix a bug of features added in `1.5.1` 
+
 ## 1.5.1
 * Remove device from connected device list when device is disconnected.
 

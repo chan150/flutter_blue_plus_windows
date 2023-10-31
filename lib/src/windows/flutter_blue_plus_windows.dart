@@ -13,6 +13,7 @@ class FlutterBluePlusWindows {
       <DeviceIdentifier, List<BluetoothServiceWindows>>{};
   static final Map<DeviceIdentifier, Map<String, List<int>>> _lastChrs = {};
   static final Map<DeviceIdentifier, Map<String, bool>> _isNotifying = {};
+
   // static final Map<DeviceIdentifier, List<BluetoothCharacteristicWindows>>
   //     _notifiedChrs = {};
 
@@ -39,17 +40,22 @@ class FlutterBluePlusWindows {
       enableLog: false,
     );
 
-    WinBle.connectionStream.listen((event) {
-      if (event['device'] == null) return;
-      if (event['connected'] == null) return;
+    WinBle.connectionStream.listen(
+      (event) {
+        if (event['device'] == null) return;
+        if (event['connected'] == null) return;
 
-      final map = _connectionStream.latestValue;
-      map[event['device']] = event['connected'];
+        final map = _connectionStream.latestValue;
+        map[event['device']] = event['connected'];
 
-      log(map.toString());
-      _connectionStream.add(map);
-      _devices.removeWhere((device) => device._address == event['device']);
-    });
+        log(map.toString());
+        _connectionStream.add(map);
+
+        if (!event['connected']) {
+          _devices.removeWhere((device) => device._address == event['device']);
+        }
+      },
+    );
     _initialized = true;
   }
 
