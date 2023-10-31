@@ -10,8 +10,6 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     this.rssi,
   });
 
-  static final _cachedMap = <DeviceIdentifier, BluetoothDeviceWindows>{};
-
   final int? rssi;
 
   final String platformName;
@@ -60,9 +58,6 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }) async {
     try {
       await WinBle.connect(_address);
-      // if(await WinBle.canPair(_address)){
-      //   await WinBle.pair(_address);
-      // }
       final existed = FlutterBluePlusWindows._devices
           .where((e) => e.remoteId == remoteId)
           .isNotEmpty;
@@ -154,16 +149,17 @@ class BluetoothDeviceWindows extends BluetoothDevice {
 
     final map = FlutterBluePlusWindows._connectionStream.latestValue;
 
-    log('===================== ${map[_address]} =================');
+    log('Connection State is started');
 
     if (map[_address] != null) {
       yield map[_address]!.isConnected;
     }
 
     await for (final event in WinBle.connectionStreamOf(_address)) {
-      log('===================== $event =================');
       yield event.isConnected;
     }
+
+    log('Connection State is closed');
   }
 
   Stream<int> get mtu async* {

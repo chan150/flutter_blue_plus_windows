@@ -1,3 +1,6 @@
+## 1.5.3
+* Write logs when connection state stream is started/terminated. 
+
 ## 1.5.2
 * Fix a bug of features added in `1.5.1` 
 
