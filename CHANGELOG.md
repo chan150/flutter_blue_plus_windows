@@ -1,4 +1,4 @@
-## 1.5.5
+## 1.5.6
 * Remove connection by OS when performing `startScan`.
 
 ## 1.5.3

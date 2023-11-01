@@ -142,8 +142,11 @@ class FlutterBluePlusWindows {
       _scanTimeout = Timer(timeout, stopScan);
     }
 
-    /// remove connection by OS
+    /// remove connection by OS.
+    /// The reason why we add this logic is
+    /// to avoid uncontrollable devices and to make consistency.
     for(final device in _removed){
+      await device.connect();
       await device.disconnect();
     }
     _added.removeAll(_removed);
