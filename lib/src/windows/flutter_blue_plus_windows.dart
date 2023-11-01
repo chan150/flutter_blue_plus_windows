@@ -142,6 +142,13 @@ class FlutterBluePlusWindows {
       _scanTimeout = Timer(timeout, stopScan);
     }
 
+    /// remove connection by OS
+    for(final device in _removed){
+      await device.disconnect();
+    }
+    _added.removeAll(_removed);
+    _removed.clear();
+
     /// add WinBle scanning
     WinBle.startScanning();
 
