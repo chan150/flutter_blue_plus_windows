@@ -1,3 +1,6 @@
+## 1.5.5
+* Remove connection by OS when performing `startScan`.
+
 ## 1.5.3
 * Write logs when connection state stream is started/terminated. 
 
