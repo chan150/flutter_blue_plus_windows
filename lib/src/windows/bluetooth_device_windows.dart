@@ -58,12 +58,9 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }) async {
     try {
       await WinBle.connect(_address);
-      final existed = FlutterBluePlusWindows._devices
-          .where((e) => e.remoteId == remoteId)
-          .isNotEmpty;
-      if (!existed) {
-        FlutterBluePlusWindows._devices.add(this);
-      }
+
+      FlutterBluePlusWindows._added.add(this);
+      FlutterBluePlusWindows._removed.remove(this);
     } catch (e) {
       print(e);
     }
@@ -73,11 +70,11 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     int timeout = 35, // TODO: implementation missing
   }) async {
     try {
-      // await WinBle.unPair(_address);
       await WinBle.disconnect(_address);
 
-      FlutterBluePlusWindows._devices
-          .removeWhere((e) => e.remoteId == remoteId);
+      FlutterBluePlusWindows._added.remove(this);
+      FlutterBluePlusWindows._removed.add(this);
+
       FlutterBluePlusWindows._lastChrs[remoteId]?.clear();
       FlutterBluePlusWindows._isNotifying[remoteId]?.clear();
     } catch (e) {

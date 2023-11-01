@@ -27,7 +27,10 @@ class FlutterBluePlusWindows {
   // timeout for scanning that can be cancelled by stopScan
   static Timer? _scanTimeout;
 
-  static final _devices = <BluetoothDeviceWindows>[];
+  static List<BluetoothDeviceWindows> get _devices =>
+      _added.difference(_removed).toList();
+  static final _removed = <BluetoothDeviceWindows>{};
+  static final _added = <BluetoothDeviceWindows>{};
 
   /// newly defined
   static final _connectionStream =
@@ -53,7 +56,13 @@ class FlutterBluePlusWindows {
         _connectionStream.add(map);
 
         if (!event['connected']) {
-          _devices.removeWhere((device) => device._address == event['device']);
+          final _device = _added
+              .where((device) => device._address == event['device'])
+              .firstOrNull;
+          if (_device != null && !_removed.contains(_device)) {
+            _removed.add(_device);
+          }
+          // _devices.removeWhere((device) => device._address == event['device']);
         }
       },
     );
@@ -98,9 +107,6 @@ class FlutterBluePlusWindows {
 
   static List<BluetoothDevice> get connectedDevices {
     return _devices;
-    // return _devices
-    //     .where((device) => _connectedBehaviors[device]?.valueOrNull ?? false)
-    //     .toList();
   }
 
   static Future<List<BluetoothDevice>> get bondedDevices async {
