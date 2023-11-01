@@ -146,8 +146,8 @@ class FlutterBluePlusWindows {
     /// The reason why we add this logic is
     /// to avoid uncontrollable devices and to make consistency.
     for(final device in _removed){
-      await device.connect();
-      await device.disconnect();
+      await WinBle.connect(device._address);
+      await WinBle.disconnect(device._address);
     }
     _added.removeAll(_removed);
     _removed.clear();
