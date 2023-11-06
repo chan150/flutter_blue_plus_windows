@@ -145,7 +145,7 @@ class FlutterBluePlusWindows {
     /// remove connection by OS.
     /// The reason why we add this logic is
     /// to avoid uncontrollable devices and to make consistency.
-    for(final device in _removed){
+    for (final device in _removed) {
       await WinBle.connect(device._address);
       await WinBle.disconnect(device._address);
     }
@@ -159,7 +159,8 @@ class FlutterBluePlusWindows {
     late Stream<BleDevice?> outputStream;
     if (removeIfGone != null) {
       outputStream = _mergeStreams(
-          [WinBle.scanStream, Stream.periodic(Duration(milliseconds: 250))]);
+        [WinBle.scanStream, Stream.periodic(Duration(milliseconds: 250))],
+      );
     } else {
       outputStream = WinBle.scanStream;
     }
@@ -167,58 +168,60 @@ class FlutterBluePlusWindows {
     final output = <ScanResult>[];
 
     // listen & push to `scanResults` stream
-    _scanSubscription = outputStream.listen((BleDevice? winBleDevice) {
-      if (winBleDevice == null) {
-        // if null, this is just a periodic update
-        // for removing old results
-        output.removeWhere(
-            (elm) => DateTime.now().difference(elm.timeStamp) > removeIfGone!);
+    _scanSubscription = outputStream.listen(
+      (BleDevice? winBleDevice) {
+        if (winBleDevice == null) {
+          // if null, this is just a periodic update for removing old results
+          output.removeWhere((elm) =>
+              DateTime.now().difference(elm.timeStamp) > removeIfGone!);
 
-        // push to stream
-        _scanResultsList.add(List.from(output));
-      } else {
-        final device = BluetoothDeviceWindows(
-          platformName: winBleDevice.name,
-          remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
-          rssi: int.tryParse(winBleDevice.rssi) ?? -100,
-        );
-        final sr = ScanResult(
-          device: device,
-          advertisementData: AdvertisementData(
-            localName: winBleDevice.name,
-            txPowerLevel: winBleDevice.adStructures
-                ?.where((e) => e.type == 10)
-                .singleOrNull
-                ?.data
-                .firstOrNull,
-            //TODO: Should verify
-            connectable: !winBleDevice.advType.contains('Non'),
-            manufacturerData: {
-              if (winBleDevice.manufacturerData.length >= 2)
-                winBleDevice.manufacturerData[0]:
-                    winBleDevice.manufacturerData.sublist(2),
-            },
-            //TODO: implementation missing
-            serviceData: {},
-            serviceUuids:
-                winBleDevice.serviceUuids.map((e) => e as String).toList(),
-          ),
-          rssi: int.tryParse(winBleDevice.rssi) ?? -100,
-          timeStamp: DateTime.now(),
-        );
-
-        // add result to output
-        if (oneByOne) {
-          output.clear();
-          output.add(sr);
+          // push to stream
+          _scanResultsList.add(List.from(output));
         } else {
-          output.addOrUpdate(sr);
-        }
+          final device = BluetoothDeviceWindows(
+            platformName: winBleDevice.name,
+            remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
+            rssi: int.tryParse(winBleDevice.rssi) ?? -100,
+          );
+          final sr = ScanResult(
+            device: device,
+            advertisementData: AdvertisementData(
+              localName: winBleDevice.name,
+              txPowerLevel: winBleDevice.adStructures
+                  ?.where((e) => e.type == 10)
+                  .singleOrNull
+                  ?.data
+                  .firstOrNull,
+              //TODO: Should verify
+              connectable: !winBleDevice.advType.contains('Non'),
+              manufacturerData: {
+                if (winBleDevice.manufacturerData.length >= 2)
+                  winBleDevice.manufacturerData[0]:
+                      winBleDevice.manufacturerData.sublist(2),
+              },
+              //TODO: implementation missing
+              serviceData: {},
+              serviceUuids:
+                  winBleDevice.serviceUuids.map((e) => e as String).toList(),
+            ),
+            rssi: int.tryParse(winBleDevice.rssi) ?? -100,
+            timeStamp: DateTime.now(),
+          );
 
-        // push to stream
-        _scanResultsList.add(List.from(output));
-      }
-    });
+          // add result to output
+          if (oneByOne) {
+            output
+              ..clear()
+              ..add(sr);
+          } else {
+            output.addOrUpdate(sr);
+          }
+
+          // push to stream
+          _scanResultsList.add(List.from(output));
+        }
+      },
+    );
   }
 
   /// Stops a scan for Bluetooth Low Energy devices
@@ -228,6 +231,8 @@ class FlutterBluePlusWindows {
     _scanSubscription?.cancel();
     _scanTimeout?.cancel();
     _isScanning.add(false);
+
+    _scanResultsList.latestValue = [];
   }
 
   /// Sets the internal FlutterBlue log level
