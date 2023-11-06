@@ -55,6 +55,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     Duration timeout =
         const Duration(seconds: 35), // TODO: implementation missing
     bool autoConnect = false, // TODO: implementation missing
+    int? mtu = 512, // TODO: implementation missing
   }) async {
     try {
       await WinBle.connect(_address);

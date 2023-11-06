@@ -1,5 +1,5 @@
 ## 1.6.0
-* Apply `Flutter blue plus 1.26.0`.
+* Apply `Flutter blue plus 1.26.0`, (there is a breaking change with `connect()`).
 
 ## 1.5.7
 * Remove connection by OS when performing `startScan`.
