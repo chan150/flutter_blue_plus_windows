@@ -84,12 +84,11 @@ class _CounterViewState extends State<CounterView> {
                 // Stop scanning
                 await FlutterBluePlus.stopScan();
 
-                print(
-                  devices
-                      .where((e) => e.device.platformName.startsWith('HEH001'))
-                      .map((e) => e.toString())
-                      .join('\n'),
-                );
+                devices
+                    .where((e) => e.device.platformName.startsWith('HEH001'))
+                    .firstOrNull
+                    ?.device
+                    .connect();
               },
               child: const Icon(Icons.bluetooth),
             ),
@@ -135,11 +134,9 @@ class _CounterViewState extends State<CounterView> {
                 final connected = await FlutterBluePlus.systemDevices;
                 print(connected);
                 connected
-                    .where(
-                        (element) => element.platformName.startsWith('HEH001'))
+                    .where((e) => e.platformName.startsWith('HEH001'))
                     .lastOrNull
                     ?.disconnect();
-                // await WinBle.disconnect('cc:17:8a:a0:2a:18'.toLowerCase());
               },
               child: const Icon(Icons.bluetooth_disabled),
             ),
@@ -149,11 +146,9 @@ class _CounterViewState extends State<CounterView> {
                 final connected = await FlutterBluePlus.systemDevices;
                 print(connected);
                 connected
-                    .where(
-                        (element) => element.platformName.startsWith('C-Click'))
+                    .where((e) => e.platformName.startsWith('C-Click'))
                     .lastOrNull
                     ?.disconnect();
-                // await WinBle.disconnect('cc:17:8a:a0:2a:18'.toLowerCase());
               },
               child: const Icon(
                 Icons.bluetooth_disabled,
