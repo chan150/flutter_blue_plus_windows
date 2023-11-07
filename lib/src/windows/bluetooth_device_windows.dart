@@ -69,6 +69,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
 
   Future<void> disconnect({
     int timeout = 35, // TODO: implementation missing
+    bool queue = true, // TODO: implementation missing
   }) async {
     try {
       await WinBle.disconnect(_address);

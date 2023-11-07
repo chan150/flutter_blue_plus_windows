@@ -92,6 +92,7 @@ class FlutterBluePlusWindows {
     await WinBle.updateBluetoothState(true);
   }
 
+  // TODO: compare with original lib
   static Stream<List<ScanResult>> get scanResults => _scanResultsList.stream;
 
   static Stream<BluetoothAdapterState> get adapterState async* {
