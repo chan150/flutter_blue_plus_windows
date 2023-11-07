@@ -77,7 +77,8 @@ class _CounterViewState extends State<CounterView> {
                 );
 
                 // Start scanning
-                await FlutterBluePlus.startScan();
+                await FlutterBluePlus.startScan(
+                    timeout: const Duration(seconds: 2));
 
                 await Future.delayed(const Duration(seconds: 3));
 
