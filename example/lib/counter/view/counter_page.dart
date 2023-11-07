@@ -63,19 +63,14 @@ class _CounterViewState extends State<CounterView> {
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
-                var isFinished = false;
-                Set<DeviceIdentifier> seen = {};
+                final seen = <DeviceIdentifier>{};
+                final devices = <ScanResult>[];
                 FlutterBluePlus.scanResults.listen(
                   (results) {
                     for (ScanResult r in results) {
-                      if (isFinished) return;
                       if (seen.contains(r.device.remoteId) == false) {
                         seen.add(r.device.remoteId);
-                      }
-
-                      if (r.device.platformName.startsWith('HEH001')) {
-                        isFinished = true;
-                        r.device.connect();
+                        devices.add(r);
                       }
                     }
                   },
@@ -88,26 +83,27 @@ class _CounterViewState extends State<CounterView> {
 
                 // Stop scanning
                 await FlutterBluePlus.stopScan();
-                print(seen);
+
+                print(
+                  devices
+                      .where((e) => e.device.platformName.startsWith('HEH001'))
+                      .map((e) => e.toString())
+                      .join('\n'),
+                );
               },
               child: const Icon(Icons.bluetooth),
             ),
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
-                var isFinished = false;
-                Set<DeviceIdentifier> seen = {};
+                final seen = <DeviceIdentifier>{};
+                final devices = <ScanResult>[];
                 FlutterBluePlus.scanResults.listen(
-                      (results) {
+                  (results) {
                     for (ScanResult r in results) {
-                      if (isFinished) return;
                       if (seen.contains(r.device.remoteId) == false) {
                         seen.add(r.device.remoteId);
-                      }
-
-                      if (r.device.platformName.startsWith('C-Click')) {
-                        isFinished = true;
-                        r.device.connect();
+                        devices.add(r);
                       }
                     }
                   },
@@ -120,9 +116,18 @@ class _CounterViewState extends State<CounterView> {
 
                 // Stop scanning
                 await FlutterBluePlus.stopScan();
-                print(seen);
+
+                print(
+                  devices
+                      .where((e) => e.device.platformName.startsWith('C-Click'))
+                      .map((e) => e.toString())
+                      .join('\n'),
+                );
               },
-              child: const Icon(Icons.bluetooth, color: Colors.red,),
+              child: const Icon(
+                Icons.bluetooth,
+                color: Colors.red,
+              ),
             ),
             const SizedBox(height: 8),
             FloatingActionButton(
@@ -150,7 +155,10 @@ class _CounterViewState extends State<CounterView> {
                     ?.disconnect();
                 // await WinBle.disconnect('cc:17:8a:a0:2a:18'.toLowerCase());
               },
-              child: const Icon(Icons.bluetooth_disabled, color: Colors.red,),
+              child: const Icon(
+                Icons.bluetooth_disabled,
+                color: Colors.red,
+              ),
             ),
             const SizedBox(height: 8),
             FloatingActionButton(
