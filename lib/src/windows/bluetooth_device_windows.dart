@@ -79,7 +79,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
       print(e);
     } finally {
       FlutterBluePlusWindows._added.remove(this);
-      FlutterBluePlusWindows._removed.remove(this);
+      FlutterBluePlusWindows._removed.add(this);
 
       FlutterBluePlusWindows._lastChrs[remoteId]?.clear();
       FlutterBluePlusWindows._isNotifying[remoteId]?.clear();
