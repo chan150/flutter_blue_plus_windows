@@ -1,3 +1,6 @@
+## 1.6.6
+* Add cache for storing characteristics.
+
 ## 1.6.0
 * Apply `Flutter blue plus 1.26.0`, (there is a breaking change with `connect()`).
 
