@@ -90,7 +90,8 @@ class _CounterViewState extends State<CounterView> {
                     .where((e) => e.device.platformName.startsWith('HEH001'))
                     .firstOrNull
                     ?.device
-                    .connect();
+                  ?..createBond()
+                  ..connect();
               },
               child: const Icon(Icons.bluetooth),
             ),
@@ -138,7 +139,8 @@ class _CounterViewState extends State<CounterView> {
                 connected
                     .where((e) => e.platformName.startsWith('HEH001'))
                     .lastOrNull
-                    ?.disconnect();
+                  ?..removeBond()
+                  ..disconnect();
               },
               child: const Icon(Icons.bluetooth_disabled),
             ),

@@ -73,8 +73,8 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }) async {
     try {
       // TODO: bug in WinBle; bonded devices never are connected unless the bonding is removed
-      await WinBle.unPair(_address);
-      // await WinBle.disconnect(_address);
+      // await WinBle.unPair(_address);
+      await WinBle.disconnect(_address);
     } catch (e) {
       print(e);
     } finally {
