@@ -148,6 +148,18 @@ class _CounterViewState extends State<CounterView> {
             FloatingActionButton(
               onPressed: () async {
                 final connected = await FlutterBluePlus.systemDevices;
+                final s = await connected
+                    .where((e) => e.platformName.startsWith('HEH001'))
+                    .lastOrNull
+                    ?.discoverServices();
+                print(s);
+              },
+              child: const Icon(Icons.insert_emoticon_rounded),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              onPressed: () async {
+                final connected = await FlutterBluePlus.systemDevices;
                 print(connected);
                 connected
                     .where((e) => e.platformName.startsWith('C-Click'))

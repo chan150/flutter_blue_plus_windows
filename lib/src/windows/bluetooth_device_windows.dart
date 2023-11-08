@@ -89,20 +89,22 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   Future<List<BluetoothService>> discoverServices({
     int timeout = 15, // TODO: implementation missing
   }) async {
-    List<BluetoothServiceWindows> result = [];
+    List<BluetoothServiceWindows> result =
+        List.from(FlutterBluePlusWindows._knownServices[remoteId] ?? []);
 
     try {
       _isDiscoveringServices.add(true);
 
       final response = await WinBle.discoverServices(_address);
-      final map = <String, List<BluetoothCharacteristic>>{};
+      FlutterBluePlusWindows._characteristicCache[remoteId] ??=
+          <String, List<BluetoothCharacteristic>>{};
 
       for (final serviceId in response) {
         final characteristic = await WinBle.discoverCharacteristics(
           address: _address,
           serviceId: serviceId,
         );
-        map[serviceId] = [
+        FlutterBluePlusWindows._characteristicCache[remoteId]?[serviceId] ??= [
           ...characteristic.map(
             (e) => BluetoothCharacteristicWindows(
               remoteId: remoteId,
@@ -124,7 +126,8 @@ class BluetoothDeviceWindows extends BluetoothDevice {
               // TODO: implementation missing
               isPrimary: true,
               // TODO: implementation missing
-              characteristics: map[p]!,
+              characteristics:
+                  FlutterBluePlusWindows._characteristicCache[remoteId]![p]!,
               // TODO: implementation missing
               includedServices: [],
             ),

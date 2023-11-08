@@ -14,6 +14,9 @@ class FlutterBluePlusWindows {
   static final Map<DeviceIdentifier, Map<String, List<int>>> _lastChrs = {};
   static final Map<DeviceIdentifier, Map<String, bool>> _isNotifying = {};
 
+  static final Map<DeviceIdentifier, Map<String, List<BluetoothCharacteristic>>>
+      _characteristicCache = {};
+
   // static final Map<DeviceIdentifier, List<BluetoothCharacteristicWindows>>
   //     _notifiedChrs = {};
 
