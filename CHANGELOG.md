@@ -1,3 +1,6 @@
+## 1.8.0
+* Fix bug with Guid converted from string due to starting/ending with '{ }' in `WinBLE`
+
 ## 1.7.0
 * Apply `flutter blue plus 1.28.5` (there is several breaking changes.).
 
