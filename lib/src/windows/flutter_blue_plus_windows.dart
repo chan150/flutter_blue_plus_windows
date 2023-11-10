@@ -206,7 +206,8 @@ class FlutterBluePlusWindows {
               //TODO: implementation missing
               serviceData: {},
               serviceUuids: winBleDevice.serviceUuids
-                  .map((e) => Guid(e as String))
+                  .map(
+                      (e) => Guid((e as String).replaceAll(RegExp(r'{|}'), '')))
                   .toList(),
             ),
             rssi: int.tryParse(winBleDevice.rssi) ?? -100,
