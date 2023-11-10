@@ -1,3 +1,6 @@
+## 1.7.0
+* Apply `flutter blue plus 1.28.5` (there is several breaking changes.).
+
 ## 1.6.6
 * Add cache for storing characteristics.
 

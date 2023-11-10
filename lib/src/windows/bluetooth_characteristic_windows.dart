@@ -122,6 +122,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
   Future<bool> setNotifyValue(
     bool notify, {
     int timeout = 15, // TODO: missing implementation
+    bool forceIndications = false,  // TODO: missing implementation
   }) async {
     /// unSubscribeFromCharacteristic
     try {
@@ -143,9 +144,6 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
           serviceId: serviceUuid.toString(),
           characteristicId: characteristicUuid.toString(),
         );
-        // FlutterBluePlusWindows._notifiedChrs[remoteId]?.addOrUpdate(this);
-      } else {
-        // FlutterBluePlusWindows._notifiedChrs[remoteId]?.remove(this);
       }
       FlutterBluePlusWindows._isNotifying[remoteId]?[_key] = notify;
     } catch (e) {

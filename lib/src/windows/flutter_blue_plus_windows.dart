@@ -190,7 +190,7 @@ class FlutterBluePlusWindows {
           final sr = ScanResult(
             device: device,
             advertisementData: AdvertisementData(
-              localName: winBleDevice.name,
+              advName: winBleDevice.name,
               txPowerLevel: winBleDevice.adStructures
                   ?.where((e) => e.type == 10)
                   .singleOrNull
@@ -205,8 +205,9 @@ class FlutterBluePlusWindows {
               },
               //TODO: implementation missing
               serviceData: {},
-              serviceUuids:
-                  winBleDevice.serviceUuids.map((e) => e as String).toList(),
+              serviceUuids: winBleDevice.serviceUuids
+                  .map((e) => Guid(e as String))
+                  .toList(),
             ),
             rssi: int.tryParse(winBleDevice.rssi) ?? -100,
             timeStamp: DateTime.now(),
