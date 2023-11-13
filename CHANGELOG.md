@@ -1,3 +1,7 @@
+## 1.9.0
+* Apply a breaking changes `Guid` in `Flutter blue plus` packages.
+* Use `uuid128` instead of `toString()`.
+
 ## 1.8.10
 * Fix `Guid` bug related with `Flutter blue plus` packages.
 

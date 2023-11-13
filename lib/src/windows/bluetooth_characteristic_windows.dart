@@ -74,8 +74,8 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
   // TODO: need to verify
   Stream<List<int>> get lastValueStream => WinBle.characteristicValueStreamOf(
         address: _address,
-        serviceId: serviceUuid.toString(),
-        characteristicId: characteristicUuid.toString(),
+        serviceId: serviceUuid.uuid128,
+        characteristicId: characteristicUuid.uuid128,
       )
           .map((p) => <int>[...p])
           .newStreamWithInitialValue(lastValue)
@@ -87,8 +87,8 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
   // TODO: need to verify
   Stream<List<int>> get onValueReceived => WinBle.characteristicValueStreamOf(
         address: _address,
-        serviceId: serviceUuid.toString(),
-        characteristicId: characteristicUuid.toString(),
+        serviceId: serviceUuid.uuid128,
+        characteristicId: characteristicUuid.uuid128,
       ).map((p) => <int>[...p]).asBroadcastStream();
 
   // TODO: implementation is required
@@ -98,8 +98,8 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
   Future<List<int>> read({int timeout = 15}) async {
     final value = await WinBle.read(
       address: _address,
-      serviceId: serviceUuid.toString(),
-      characteristicId: characteristicUuid.toString(),
+      serviceId: serviceUuid.uuid128,
+      characteristicId: characteristicUuid.uuid128,
     );
 
     return value;
@@ -111,8 +111,8 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
       int timeout = 15}) async {
     await WinBle.write(
       address: _address,
-      service: serviceUuid.toString(),
-      characteristic: characteristicUuid.toString(),
+      service: serviceUuid.uuid128,
+      characteristic: characteristicUuid.uuid128,
       data: Uint8List.fromList(value),
       writeWithResponse: propertiesWinBle.writeWithoutResponse ?? false,
     );
@@ -128,8 +128,8 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
     try {
       await WinBle.unSubscribeFromCharacteristic(
         address: _address,
-        serviceId: serviceUuid.toString(),
-        characteristicId: characteristicUuid.toString(),
+        serviceId: serviceUuid.uuid128,
+        characteristicId: characteristicUuid.uuid128,
       );
     } catch (e) {
       log('WinBle.unSubscribeFromCharacteristic was performed '
@@ -141,8 +141,8 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
       if (notify) {
         await WinBle.subscribeToCharacteristic(
           address: _address,
-          serviceId: serviceUuid.toString(),
-          characteristicId: characteristicUuid.toString(),
+          serviceId: serviceUuid.uuid128,
+          characteristicId: characteristicUuid.uuid128,
         );
       }
       FlutterBluePlusWindows._isNotifying[remoteId]?[_key] = notify;
