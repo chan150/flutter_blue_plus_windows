@@ -31,11 +31,17 @@ class BluetoothDeviceWindows extends BluetoothDevice {
       "planed for removal (Jan 2024). It can be easily implemented yourself") // deprecated on Aug 2023
   Stream<bool> get isDiscoveringServices => _isDiscoveringServices.stream;
 
-  // Get services
-  //  - returns null if discoverServices() has not been called
-  //  - this is cleared on disconnection. You must call discoverServices() again
-  List<BluetoothService>? get servicesList =>
-      FlutterBluePlusWindows._knownServices[remoteId];
+  // // Get services
+  // //  - returns null if discoverServices() has not been called
+  // //  - this is cleared on disconnection. You must call discoverServices() again
+  // List<BluetoothService>? get servicesList =>
+  //     FlutterBluePlusWindows._knownServices[remoteId];
+
+  /// Get services
+  ///  - returns empty if discoverServices() has not been called
+  ///    or if your device does not have any services (rare)
+  List<BluetoothServiceWindows> get servicesList =>
+      FlutterBluePlusWindows._knownServices[remoteId] ?? [];
 
   /// Stream of bluetooth services offered by the remote device
   ///   - this stream is only updated when you call discoverServices()

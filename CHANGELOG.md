@@ -1,3 +1,6 @@
+## 1.8.10
+* Fix `Guid` bug related with `Flutter blue plus` packages.
+
 ## 1.8.0
 * Fix bug with Guid converted from string due to starting/ending with '{ }' in `WinBLE`
 
