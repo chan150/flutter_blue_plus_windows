@@ -1,3 +1,6 @@
+## 1.9.5
+* Apply `flutter blue plus` to `1.28.13`.
+
 ## 1.9.0
 * Apply a breaking changes `Guid` in `Flutter blue plus` packages.
 * Use `uuid128` instead of `toString()`.
