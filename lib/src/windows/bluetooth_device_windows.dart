@@ -180,7 +180,8 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     return rssi ?? -100;
   }
 
-  Future<int> requestMtu(int desiredMtu, {int timeout = 15}) async {
+  Future<int> requestMtu(int desiredMtu,
+      {int predelay = 350, int timeout = 15}) async {
     return await WinBle.getMaxMtuSize(_address);
   }
 
