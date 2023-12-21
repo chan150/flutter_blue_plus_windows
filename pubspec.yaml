@@ -1,17 +1,17 @@
 name: flutter_blue_plus_windows
 description: Flutter blue plus for Windows
-version: 1.12.0
+version: 1.13.0
 repository: https://github.com/chan150/flutter_blue_plus_windows
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
-  flutter_blue_plus: ^1.30.3
-  win_ble: ^1.0.1
+  flutter_blue_plus: ^1.30.8
+  win_ble: ^1.0.2
   stream_with_value: ^0.5.0
   rxdart: ^0.27.7
 
 dev_dependencies:
-  test: ^1.24.9
+  test: ^1.25.0
 

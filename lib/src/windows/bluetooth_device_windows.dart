@@ -93,6 +93,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Future<List<BluetoothService>> discoverServices({
+    bool subscribeToServicesChanged = true, // TODO: implementation missing
     int timeout = 15, // TODO: implementation missing
   }) async {
     List<BluetoothServiceWindows> result =
@@ -180,8 +181,11 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     return rssi ?? -100;
   }
 
-  Future<int> requestMtu(int desiredMtu,
-      {int predelay = 350, int timeout = 15}) async {
+  Future<int> requestMtu(
+    int desiredMtu, {
+    double predelay = 0.35,
+    int timeout = 15,
+  }) async {
     return await WinBle.getMaxMtuSize(_address);
   }
 
