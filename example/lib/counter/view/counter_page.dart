@@ -1,7 +1,8 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+// import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 class CounterPage extends StatelessWidget {
   const CounterPage({super.key});
@@ -42,12 +43,12 @@ class _CounterViewState extends State<CounterView> {
                 return Text('Connection state : ${snapshot.data}');
               },
             ),
-            StreamBuilder(
-              stream: WinBle.connectionStream,
-              builder: (context, snapshot) {
-                return Text(snapshot.data.toString());
-              },
-            ),
+            // StreamBuilder(
+            //   stream: WinBle.connectionStream,
+            //   builder: (context, snapshot) {
+            //     return Text(snapshot.data.toString());
+            //   },
+            // ),
           ],
         ),
         floatingActionButton: Column(
