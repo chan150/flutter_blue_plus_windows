@@ -55,10 +55,6 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
 
   String get _key => "$serviceUuid:$characteristicUuid";
 
-  StreamSubscription? _subscription;
-
-  late _StreamController _streamController;
-
   /// this variable is updated:
   ///   - anytime `read()` is called
   ///   - anytime `write()` is called

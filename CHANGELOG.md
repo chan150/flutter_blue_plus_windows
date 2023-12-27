@@ -1,3 +1,6 @@
+## 1.14.0
+* Remove dependencies `ffi` and `win32` to avoid compile error for web 
+
 ## 1.9.5
 * Apply `flutter blue plus` to `1.28.13`.
 
