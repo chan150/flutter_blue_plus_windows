@@ -11,6 +11,10 @@ platform:
 
 dependencies:
   flutter_blue_plus: ^1.31.3
-  win_ble: ^1.0.2
+  win_ble:
+    path: win_ble
   stream_with_value: ^0.5.0
   rxdart: ^0.27.7
+
+dependency_overrides:
+  win32: null
