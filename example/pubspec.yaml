@@ -15,7 +15,6 @@ dependencies:
     sdk: flutter
   intl: ^0.18.1
 
-  flutter_blue_plus: ^1.31.3
   flutter_blue_plus_windows:
     path: ../
 

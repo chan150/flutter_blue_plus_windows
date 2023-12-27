@@ -64,7 +64,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
   ///   - anytime `write()` is called
   ///   - anytime a notification arrives (if subscribed)
   List<int> get lastValue =>
-      FlutterBluePlus._lastChrs[remoteId]?[_key] ?? [];
+      FlutterBluePlusWindows._lastChrs[remoteId]?[_key] ?? [];
 
   /// this stream emits values:
   ///   - anytime `read()` is called (TODO: does not work)
@@ -93,7 +93,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
 
   // TODO: implementation is required
   bool get isNotifying =>
-      FlutterBluePlus._isNotifying[remoteId]?[_key] ?? false;
+      FlutterBluePlusWindows._isNotifying[remoteId]?[_key] ?? false;
 
   Future<List<int>> read({int timeout = 15}) async {
     final value = await WinBle.read(
@@ -145,7 +145,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
           characteristicId: characteristicUuid.uuid128,
         );
       }
-      FlutterBluePlus._isNotifying[remoteId]?[_key] = notify;
+      FlutterBluePlusWindows._isNotifying[remoteId]?[_key] = notify;
     } catch (e) {
       log(e.toString());
     }

@@ -1,6 +1,6 @@
 part of 'windows.dart';
 
-class FlutterBluePlus {
+class FlutterBluePlusWindows {
   static bool _initialized = false;
 
   static BluetoothAdapterState _state = BluetoothAdapterState.unknown;
@@ -108,8 +108,6 @@ class FlutterBluePlus {
       },
     );
   }
-
-  static List<BluetoothDevice> get systemDevices => connectedDevices;
 
   static List<BluetoothDevice> get connectedDevices {
     return _devices;

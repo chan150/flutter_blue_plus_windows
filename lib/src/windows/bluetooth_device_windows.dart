@@ -41,16 +41,16 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   ///  - returns empty if discoverServices() has not been called
   ///    or if your device does not have any services (rare)
   List<BluetoothServiceWindows> get servicesList =>
-      FlutterBluePlus._knownServices[remoteId] ?? [];
+      FlutterBluePlusWindows._knownServices[remoteId] ?? [];
 
   /// Stream of bluetooth services offered by the remote device
   ///   - this stream is only updated when you call discoverServices()
   @Deprecated(
       "planed for removal (Jan 2024). It can be easily implemented yourself") // deprecated on Aug 2023
   Stream<List<BluetoothService>> get servicesStream {
-    if (FlutterBluePlus._knownServices[remoteId] != null) {
+    if (FlutterBluePlusWindows._knownServices[remoteId] != null) {
       return _services.stream.newStreamWithInitialValue(
-        FlutterBluePlus._knownServices[remoteId]!,
+        FlutterBluePlusWindows._knownServices[remoteId]!,
       );
     } else {
       return _services.stream;
@@ -68,8 +68,8 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     } catch (e) {
       print(e);
     } finally {
-      FlutterBluePlus._added.add(this);
-      FlutterBluePlus._removed.remove(this);
+      FlutterBluePlusWindows._added.add(this);
+      FlutterBluePlusWindows._removed.remove(this);
     }
   }
 
@@ -84,11 +84,11 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     } catch (e) {
       print(e);
     } finally {
-      FlutterBluePlus._added.remove(this);
-      FlutterBluePlus._removed.add(this);
+      FlutterBluePlusWindows._added.remove(this);
+      FlutterBluePlusWindows._removed.add(this);
 
-      FlutterBluePlus._lastChrs[remoteId]?.clear();
-      FlutterBluePlus._isNotifying[remoteId]?.clear();
+      FlutterBluePlusWindows._lastChrs[remoteId]?.clear();
+      FlutterBluePlusWindows._isNotifying[remoteId]?.clear();
     }
   }
 
@@ -97,13 +97,13 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     int timeout = 15, // TODO: implementation missing
   }) async {
     List<BluetoothServiceWindows> result =
-        List.from(FlutterBluePlus._knownServices[remoteId] ?? []);
+        List.from(FlutterBluePlusWindows._knownServices[remoteId] ?? []);
 
     try {
       _isDiscoveringServices.add(true);
 
       final response = await WinBle.discoverServices(_address);
-      FlutterBluePlus._characteristicCache[remoteId] ??=
+      FlutterBluePlusWindows._characteristicCache[remoteId] ??=
           <String, List<BluetoothCharacteristic>>{};
 
       for (final serviceId in response) {
@@ -111,7 +111,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
           address: _address,
           serviceId: serviceId,
         );
-        FlutterBluePlus._characteristicCache[remoteId]?[serviceId] ??= [
+        FlutterBluePlusWindows._characteristicCache[remoteId]?[serviceId] ??= [
           ...characteristic.map(
             (e) => BluetoothCharacteristicWindows(
               remoteId: remoteId,
@@ -134,14 +134,14 @@ class BluetoothDeviceWindows extends BluetoothDevice {
               isPrimary: true,
               // TODO: implementation missing
               characteristics:
-                  FlutterBluePlus._characteristicCache[remoteId]![p]!,
+                  FlutterBluePlusWindows._characteristicCache[remoteId]![p]!,
               // TODO: implementation missing
               includedServices: [],
             ),
           )
           .toList();
 
-      FlutterBluePlus._knownServices[remoteId] = result;
+      FlutterBluePlusWindows._knownServices[remoteId] = result;
 
       _services.add(result);
     } finally {
@@ -156,9 +156,9 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Stream<BluetoothConnectionState> get connectionState async* {
-    await FlutterBluePlus._initialize();
+    await FlutterBluePlusWindows._initialize();
 
-    final map = FlutterBluePlus._connectionStream.latestValue;
+    final map = FlutterBluePlusWindows._connectionStream.latestValue;
 
     log('Connection State is started');
 
@@ -248,7 +248,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     return 'BluetoothDevice{'
         'remoteId: $remoteId, '
         'platformName: $platformName, '
-        'services: ${FlutterBluePlus._knownServices[remoteId]}'
+        'services: ${FlutterBluePlusWindows._knownServices[remoteId]}'
         '}';
   }
 
