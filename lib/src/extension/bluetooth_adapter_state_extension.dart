@@ -1,5 +1,5 @@
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:win_ble/win_ble.dart';
+import 'package:win_ble_plus/win_ble.dart';
 
 extension BluetoothAdapterStateExtension on BleState {
   BluetoothAdapterState toAdapterState() {
