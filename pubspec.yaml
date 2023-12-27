@@ -12,6 +12,6 @@ dependencies:
   stream_with_value: ^0.5.0
   rxdart: ^0.27.7
 
-dev_dependencies:
-  test: ^1.25.0
+#dependency_overrides:
+#  win32:
 
