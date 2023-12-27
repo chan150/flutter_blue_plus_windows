@@ -16,8 +16,8 @@ dependencies:
   intl: ^0.18.1
 
   flutter_blue_plus: ^1.31.3
-#  flutter_blue_plus_windows:
-#    path: ../
+  flutter_blue_plus_windows:
+    path: ../
 
 dev_dependencies:
   build_runner: ^2.4.7

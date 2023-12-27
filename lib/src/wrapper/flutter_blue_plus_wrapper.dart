@@ -62,9 +62,7 @@ class FlutterBluePlus {
   }
 
   /// TODO: need to verify
-  static LogLevel get logLevel {
-    return Mobile.FlutterBluePlus.logLevel;
-  }
+  static LogLevel get logLevel => Mobile.FlutterBluePlus.logLevel;
 
   static Future<bool> get isSupported async {
     if (Platform.isWindows) return await FlutterBluePlusWindows.isSupported;
