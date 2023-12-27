@@ -1,6 +1,6 @@
 part of 'windows.dart';
 
-class FlutterBluePlusWindows {
+class FlutterBluePlus {
   static bool _initialized = false;
 
   static BluetoothAdapterState _state = BluetoothAdapterState.unknown;
