@@ -25,14 +25,3 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
-
-  module:
-    platforms:
-      windows:
-        package: flutter_blue_plus_windows
-      android:
-        package: flutter_blue_plus
-      macos:
-        package: flutter_blue_plus
-      ios:
-        package: flutter_blue_plus

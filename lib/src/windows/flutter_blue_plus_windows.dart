@@ -109,6 +109,8 @@ class FlutterBluePlus {
     );
   }
 
+  static List<BluetoothDevice> get systemDevices => connectedDevices;
+
   static List<BluetoothDevice> get connectedDevices {
     return _devices;
   }
@@ -206,8 +208,8 @@ class FlutterBluePlus {
               //TODO: implementation missing
               serviceData: {},
               serviceUuids: winBleDevice.serviceUuids
-                  .map(
-                      (e) => Guid((e as String).replaceAll(RegExp(r'{|}'), '')))
+                  .map((e) =>
+                      Guid((e as String).replaceAll(RegExp(r'[{}]'), '')))
                   .toList(),
             ),
             rssi: int.tryParse(winBleDevice.rssi) ?? -100,
