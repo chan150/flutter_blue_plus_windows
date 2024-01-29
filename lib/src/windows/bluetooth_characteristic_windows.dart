@@ -18,14 +18,14 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
     this.secondaryServiceUuid,
   }) : super.fromProto(
           BmBluetoothCharacteristic(
-            remoteId: remoteId.str,
+            remoteId: DeviceIdentifier(remoteId.str),
             serviceUuid: serviceUuid,
             secondaryServiceUuid: secondaryServiceUuid,
             characteristicUuid: characteristicUuid,
             descriptors: [
               for (final descriptor in descriptors)
                 BmBluetoothDescriptor(
-                  remoteId: descriptor.remoteId.str,
+                  remoteId: DeviceIdentifier(descriptor.remoteId.str),
                   serviceUuid: descriptor.serviceUuid,
                   characteristicUuid: descriptor.characteristicUuid,
                   descriptorUuid: descriptor.uuid,

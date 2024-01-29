@@ -15,7 +15,7 @@ class BluetoothServiceWindows extends BluetoothService {
     required this.includedServices,
   }) : super.fromProto(
           BmBluetoothService(
-            remoteId: remoteId.str,
+            remoteId: DeviceIdentifier(remoteId.str),
             serviceUuid: serviceUuid,
             characteristics: [for (final c in characteristics) c.toProto()],
             isPrimary: isPrimary,

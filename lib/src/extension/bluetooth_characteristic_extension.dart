@@ -3,7 +3,7 @@ import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 extension BluetoothCharacteristicExtension on BluetoothCharacteristic {
   BmBluetoothCharacteristic toProto() {
     return BmBluetoothCharacteristic(
-      remoteId: remoteId.str,
+      remoteId: DeviceIdentifier(remoteId.str),
       serviceUuid: serviceUuid,
       secondaryServiceUuid: secondaryServiceUuid,
       characteristicUuid: characteristicUuid,
