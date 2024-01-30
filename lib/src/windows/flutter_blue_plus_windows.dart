@@ -42,7 +42,7 @@ class FlutterBluePlusWindows {
   static Future<void> _initialize() async {
     if (_initialized) return;
     await WinBle.initialize(
-      serverPath: await WinServer.path,
+      serverPath: await WinServer.path(),
       enableLog: false,
     );
 
