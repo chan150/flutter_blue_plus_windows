@@ -209,6 +209,7 @@ class FlutterBluePlusWindows {
                   .map((e) =>
                       Guid((e as String).replaceAll(RegExp(r'[{}]'), '')))
                   .toList(),
+              appearance: null,
             ),
             rssi: int.tryParse(winBleDevice.rssi) ?? -100,
             timeStamp: DateTime.now(),
