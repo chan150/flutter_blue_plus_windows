@@ -70,6 +70,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     } finally {
       FlutterBluePlusWindows._added.add(this);
       FlutterBluePlusWindows._removed.remove(this);
+      print('--------');
     }
   }
 

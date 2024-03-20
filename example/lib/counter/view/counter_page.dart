@@ -88,41 +88,41 @@ class _CounterViewState extends State<CounterView> {
               child: const Icon(Icons.bluetooth),
             ),
             const SizedBox(height: 8),
-            FloatingActionButton(
-              onPressed: () async {
-                final seen = <DeviceIdentifier>{};
-                final devices = <ScanResult>[];
-                FlutterBluePlus.scanResults.listen(
-                  (results) {
-                    for (ScanResult r in results) {
-                      if (seen.contains(r.device.remoteId) == false) {
-                        seen.add(r.device.remoteId);
-                        devices.add(r);
-                      }
-                    }
-                  },
-                );
-
-                // Start scanning
-                await FlutterBluePlus.startScan();
-
-                await Future.delayed(const Duration(seconds: 3));
-
-                // Stop scanning
-                await FlutterBluePlus.stopScan();
-
-                print(
-                  devices
-                      .where((e) => e.device.platformName.startsWith('C-Click'))
-                      .map((e) => e.toString())
-                      .join('\n'),
-                );
-              },
-              child: const Icon(
-                Icons.bluetooth,
-                color: Colors.red,
-              ),
-            ),
+            // FloatingActionButton(
+            //   onPressed: () async {
+            //     final seen = <DeviceIdentifier>{};
+            //     final devices = <ScanResult>[];
+            //     FlutterBluePlus.scanResults.listen(
+            //       (results) {
+            //         for (ScanResult r in results) {
+            //           if (seen.contains(r.device.remoteId) == false) {
+            //             seen.add(r.device.remoteId);
+            //             devices.add(r);
+            //           }
+            //         }
+            //       },
+            //     );
+            //
+            //     // Start scanning
+            //     await FlutterBluePlus.startScan();
+            //
+            //     await Future.delayed(const Duration(seconds: 3));
+            //
+            //     // Stop scanning
+            //     await FlutterBluePlus.stopScan();
+            //
+            //     print(
+            //       devices
+            //           .where((e) => e.device.platformName.startsWith('C-Click'))
+            //           .map((e) => e.toString())
+            //           .join('\n'),
+            //     );
+            //   },
+            //   child: const Icon(
+            //     Icons.bluetooth,
+            //     color: Colors.red,
+            //   ),
+            // ),
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
@@ -148,20 +148,20 @@ class _CounterViewState extends State<CounterView> {
               child: const Icon(Icons.insert_emoticon_rounded),
             ),
             const SizedBox(height: 8),
-            FloatingActionButton(
-              onPressed: () async {
-                final connected = await FlutterBluePlus.systemDevices;
-                print(connected);
-                connected
-                    .where((e) => e.platformName.startsWith('C-Click'))
-                    .lastOrNull
-                    ?.disconnect();
-              },
-              child: const Icon(
-                Icons.bluetooth_disabled,
-                color: Colors.red,
-              ),
-            ),
+            // FloatingActionButton(
+            //   onPressed: () async {
+            //     final connected = await FlutterBluePlus.systemDevices;
+            //     print(connected);
+            //     connected
+            //         .where((e) => e.platformName.startsWith('C-Click'))
+            //         .lastOrNull
+            //         ?.disconnect();
+            //   },
+            //   child: const Icon(
+            //     Icons.bluetooth_disabled,
+            //     color: Colors.red,
+            //   ),
+            // ),
             const SizedBox(height: 8),
             FloatingActionButton(
               onPressed: () async {
