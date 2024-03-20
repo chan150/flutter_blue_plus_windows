@@ -77,13 +77,15 @@ class _CounterViewState extends State<CounterView> {
                 // Stop scanning
                 await FlutterBluePlus.stopScan();
 
-                print(devices);
-
-                devices
+                // print(devices);
+                final device = devices
                     .where((e) => e.device.platformName.startsWith('HEH001'))
                     .firstOrNull
-                    ?.device
-                    .connect();
+                    ?.device;
+
+                print(device);
+
+                device?.connect();
               },
               child: const Icon(Icons.bluetooth),
             ),
