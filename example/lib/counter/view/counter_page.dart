@@ -83,8 +83,6 @@ class _CounterViewState extends State<CounterView> {
                     .firstOrNull
                     ?.device;
 
-                print(device);
-
                 device?.connect();
               },
               child: const Icon(Icons.bluetooth),

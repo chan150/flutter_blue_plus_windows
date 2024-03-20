@@ -69,8 +69,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
       print(e);
     } finally {
       FlutterBluePlusWindows._added.add(this);
-      FlutterBluePlusWindows._removed.remove(this);
-      print('--------');
+      // FlutterBluePlusWindows._removed.remove(this);
     }
   }
 
@@ -79,14 +78,14 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     bool queue = true, // TODO: implementation missing
   }) async {
     try {
-      // TODO: bug in WinBle; bonded devices never are connected unless the bonding is removed
+      // TODO: bug in WinBle; devices once paired are never connected unless the bonding is removed
       // await WinBle.unPair(_address);
       await WinBle.disconnect(_address);
     } catch (e) {
       print(e);
     } finally {
       FlutterBluePlusWindows._added.remove(this);
-      FlutterBluePlusWindows._removed.add(this);
+      // FlutterBluePlusWindows._removed.add(this);
 
       FlutterBluePlusWindows._lastChrs[remoteId]?.clear();
       FlutterBluePlusWindows._isNotifying[remoteId]?.clear();
