@@ -31,7 +31,8 @@ class FlutterBluePlusWindows {
   static Timer? _scanTimeout;
 
   static List<BluetoothDeviceWindows> get _devices => [..._added];
-      // _added.difference(_removed).toList();
+
+  // _added.difference(_removed).toList();
   // static final _removed = <BluetoothDeviceWindows>{};
   static final _added = <BluetoothDeviceWindows>{};
 
@@ -59,9 +60,12 @@ class FlutterBluePlusWindows {
         _connectionStream.add(map);
 
         if (!event['connected']) {
-          final devices = _added
-              .where((device) => device._address == event['device']);
-          for(final device in devices){
+          final devices = [
+            ..._added.where((device) => device._address == event['device']),
+          ];
+          if (devices.isEmpty) return;
+
+          for (final device in devices) {
             _added.remove(device);
           }
           // if (_device != null && !_removed.contains(_device)) {
