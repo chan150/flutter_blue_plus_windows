@@ -17,9 +17,6 @@ class FlutterBluePlusWindows {
   static final Map<DeviceIdentifier, Map<String, List<BluetoothCharacteristic>>>
       _characteristicCache = {};
 
-  // static final Map<DeviceIdentifier, List<BluetoothCharacteristicWindows>>
-  //     _notifiedChrs = {};
-
   // stream used for the scanResults public api
   static final _scanResultsList =
       _StreamController(initialValue: <ScanResult>[]);
@@ -30,11 +27,9 @@ class FlutterBluePlusWindows {
   // timeout for scanning that can be cancelled by stopScan
   static Timer? _scanTimeout;
 
-  static List<BluetoothDeviceWindows> get _devices => [..._added];
+  static List<BluetoothDeviceWindows> get _devices => [..._deviceSet];
 
-  // _added.difference(_removed).toList();
-  // static final _removed = <BluetoothDeviceWindows>{};
-  static final _added = <BluetoothDeviceWindows>{};
+  static final _deviceSet = <BluetoothDeviceWindows>{};
 
   /// newly defined
   static final _connectionStream =
@@ -61,17 +56,13 @@ class FlutterBluePlusWindows {
 
         if (!event['connected']) {
           final devices = [
-            ..._added.where((device) => device._address == event['device']),
+            ..._deviceSet.where((device) => device._address == event['device']),
           ];
           if (devices.isEmpty) return;
 
           for (final device in devices) {
-            _added.remove(device);
+            _deviceSet.remove(device);
           }
-          // if (_device != null && !_removed.contains(_device)) {
-          //   _removed.add(_device);
-          // }
-          // _devices.removeWhere((device) => device._address == event['device']);
         }
       },
     );
@@ -149,12 +140,6 @@ class FlutterBluePlusWindows {
     /// remove connection by OS.
     /// The reason why we add this logic is
     /// to avoid uncontrollable devices and to make consistency.
-    // for (final device in _removed) {
-    //   await WinBle.connect(device._address);
-    //   await WinBle.disconnect(device._address);
-    // }
-    // _added.removeAll(_removed);
-    // _removed.clear();
 
     /// add WinBle scanning
     WinBle.startScanning();

@@ -68,7 +68,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     } catch (e) {
       print(e);
     } finally {
-      FlutterBluePlusWindows._added.add(this);
+      FlutterBluePlusWindows._deviceSet.add(this);
       // FlutterBluePlusWindows._removed.remove(this);
     }
   }
@@ -84,7 +84,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     } catch (e) {
       print(e);
     } finally {
-      FlutterBluePlusWindows._added.remove(this);
+      FlutterBluePlusWindows._deviceSet.remove(this);
       // FlutterBluePlusWindows._removed.add(this);
 
       FlutterBluePlusWindows._lastChrs[remoteId]?.clear();
