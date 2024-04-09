@@ -110,7 +110,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
       service: serviceUuid.str128,
       characteristic: characteristicUuid.str128,
       data: Uint8List.fromList(value),
-      writeWithResponse: propertiesWinBle.writeWithoutResponse ?? false,
+      writeWithResponse: !withoutResponse, // propertiesWinBle.writeWithoutResponse ?? false,
     );
   }
 
