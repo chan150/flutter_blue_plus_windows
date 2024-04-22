@@ -55,7 +55,7 @@ class FlutterBluePlus {
     return await Mobile.FlutterBluePlus.stopScan();
   }
 
-  static void setLogLevel(LogLevel level, {color = true}) {
+  static Future<void> setLogLevel(LogLevel level, {color = true}) async {
     if (Platform.isWindows)
       return FlutterBluePlusWindows.setLogLevel(level, color: color);
     return Mobile.FlutterBluePlus.setLogLevel(level, color: color);

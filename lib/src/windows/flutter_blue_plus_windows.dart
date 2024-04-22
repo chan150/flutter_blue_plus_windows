@@ -228,7 +228,7 @@ class FlutterBluePlusWindows {
   }
 
   /// Sets the internal FlutterBlue log level
-  static void setLogLevel(LogLevel level, {color = true}) {
+  static Future<void> setLogLevel(LogLevel level, {color = true}) async {
     // Nothing to implement
     return;
   }
