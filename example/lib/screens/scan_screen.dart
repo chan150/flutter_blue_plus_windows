@@ -27,7 +27,7 @@ class _ScanScreenState extends State<ScanScreen> {
   void initState() {
     super.initState();
 
-    _scanResultsSubscription = FlutterBluePlus.scanResults.listen((results) {
+    _scanResultsSubscription = FlutterBluePlusWindows.scanResults.listen((results) {
       _scanResults = results;
       if (mounted) {
         setState(() {});
@@ -36,7 +36,7 @@ class _ScanScreenState extends State<ScanScreen> {
       Snackbar.show(ABC.b, prettyException("Scan Error:", e), success: false);
     });
 
-    _isScanningSubscription = FlutterBluePlus.isScanning.listen((state) {
+    _isScanningSubscription = FlutterBluePlusWindows.isScanning.listen((state) {
       _isScanning = state;
       if (mounted) {
         setState(() {});
@@ -53,12 +53,12 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future onScanPressed() async {
     try {
-      _systemDevices = await FlutterBluePlus.systemDevices;
+      _systemDevices = await FlutterBluePlusWindows.systemDevices;
     } catch (e) {
       Snackbar.show(ABC.b, prettyException("System Devices Error:", e), success: false);
     }
     try {
-      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+      await FlutterBluePlusWindows.startScan(timeout: const Duration(seconds: 15));
     } catch (e) {
       Snackbar.show(ABC.b, prettyException("Start Scan Error:", e), success: false);
     }
@@ -69,7 +69,7 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future onStopPressed() async {
     try {
-      FlutterBluePlus.stopScan();
+      FlutterBluePlusWindows.stopScan();
     } catch (e) {
       Snackbar.show(ABC.b, prettyException("Stop Scan Error:", e), success: false);
     }
@@ -86,7 +86,7 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future onRefresh() {
     if (_isScanning == false) {
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+      FlutterBluePlusWindows.startScan(timeout: const Duration(seconds: 15));
     }
     if (mounted) {
       setState(() {});
@@ -95,7 +95,7 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Widget buildScanButton(BuildContext context) {
-    if (FlutterBluePlus.isScanningNow) {
+    if (FlutterBluePlusWindows.isScanningNow) {
       return FloatingActionButton(
         child: const Icon(Icons.stop),
         onPressed: onStopPressed,
