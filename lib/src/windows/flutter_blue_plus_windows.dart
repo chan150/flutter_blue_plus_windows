@@ -100,14 +100,6 @@ class FlutterBluePlusWindows {
     );
   }
 
-  static List<BluetoothDevice> get connectedDevices {
-    return _devices;
-  }
-
-  static Future<List<BluetoothDevice>> get bondedDevices async {
-    return _devices;
-  }
-
   /// Start a scan, and return a stream of results
   ///   - [timeout] calls stopScan after a specified duration
   ///   - [removeIfGone] if true, remove devices after they've stopped advertising for X duration
@@ -167,15 +159,19 @@ class FlutterBluePlusWindows {
           // push to stream
           _scanResultsList.add(List.from(output));
         } else {
+          final remoteId = DeviceIdentifier(winBleDevice.address.toUpperCase());
+          final existedName = output.where((sr) => sr.device.remoteId == remoteId).firstOrNull?.device.platformName;
+          final deviceName = winBleDevice.name.isNotEmpty? winBleDevice.name : existedName ?? '';
+
           final device = BluetoothDeviceWindows(
-            platformName: winBleDevice.name,
-            remoteId: DeviceIdentifier(winBleDevice.address.toUpperCase()),
+            platformName: deviceName,
+            remoteId: remoteId,
             rssi: int.tryParse(winBleDevice.rssi) ?? -100,
           );
           final sr = ScanResult(
             device: device,
             advertisementData: AdvertisementData(
-              advName: winBleDevice.name,
+              advName: deviceName,
               txPowerLevel: winBleDevice.adStructures
                   ?.where((e) => e.type == 10)
                   .singleOrNull
@@ -214,6 +210,14 @@ class FlutterBluePlusWindows {
         }
       },
     );
+  }
+
+  static List<BluetoothDevice> get connectedDevices {
+    return _devices;
+  }
+
+  static Future<List<BluetoothDevice>> get bondedDevices async {
+    return _devices;
   }
 
   /// Stops a scan for Bluetooth Low Energy devices

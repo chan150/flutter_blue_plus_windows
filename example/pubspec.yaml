@@ -12,13 +12,11 @@ dependencies:
   flutter:
     sdk: flutter
 
-  flutter_blue_plus:
-    git:
-      path: https://github.com/chan150/flutter_blue_plus
-#  flutter_blue_plus_windows:
-#    # Note: We use a path dependency because the example app & plugin are bundled together.
-#    # In *your* app you should use ^1.17.3 or similar
-#    path: ../
+#  flutter_blue_plus:
+#    git:
+#      path: https://github.com/chan150/flutter_blue_plus
+  flutter_blue_plus_windows:
+    path: ../
 
 flutter:
   uses-material-design: true
