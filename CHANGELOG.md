@@ -1,3 +1,6 @@
+## 1.23.6
+* Add unimplemented notification for `read` or `write`.   
+
 ## 1.14.0
 * Remove dependencies `ffi` and `win32` to avoid compile error for web 
 

@@ -31,7 +31,14 @@ class FlutterBluePlusWindows {
 
   static final _deviceSet = <BluetoothDeviceWindows>{};
 
-  /// newly defined
+  /// Flutter blue plus windows
+  static final _charReadWriteStreamController =
+      StreamController<(String, List<int>)>();
+
+  static final _charReadWriteStream =
+      _charReadWriteStreamController.stream.asBroadcastStream();
+
+  /// Flutter blue plus windows
   static final _connectionStream =
       _StreamController(initialValue: <String, bool>{});
 
@@ -160,8 +167,14 @@ class FlutterBluePlusWindows {
           _scanResultsList.add(List.from(output));
         } else {
           final remoteId = DeviceIdentifier(winBleDevice.address.toUpperCase());
-          final existedName = output.where((sr) => sr.device.remoteId == remoteId).firstOrNull?.device.platformName;
-          final deviceName = winBleDevice.name.isNotEmpty? winBleDevice.name : existedName ?? '';
+          final existedName = output
+              .where((sr) => sr.device.remoteId == remoteId)
+              .firstOrNull
+              ?.device
+              .platformName;
+          final deviceName = winBleDevice.name.isNotEmpty
+              ? winBleDevice.name
+              : existedName ?? '';
 
           final device = BluetoothDeviceWindows(
             platformName: deviceName,

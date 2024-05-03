@@ -63,31 +63,43 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
       FlutterBluePlusWindows._lastChrs[remoteId]?[_key] ?? [];
 
   /// this stream emits values:
-  ///   - anytime `read()` is called (TODO: does not work)
-  ///   - anytime `write()` is called (TODO: does not work)
+  ///   - anytime `read()` is called
+  ///   - anytime `write()` is called
   ///   - anytime a notification arrives (if subscribed)
   ///   - and when first listened to, it re-emits the last value for convenience
-  // TODO: need to verify
-  Stream<List<int>> get lastValueStream => WinBle.characteristicValueStreamOf(
-        address: _address,
-        serviceId: serviceUuid.str128,
-        characteristicId: characteristicUuid.str128,
+  Stream<List<int>> get lastValueStream => _mergeStreams(
+        [
+          WinBle.characteristicValueStreamOf(
+            address: _address,
+            serviceId: serviceUuid.str128,
+            characteristicId: characteristicUuid.str128,
+          ),
+          FlutterBluePlusWindows._charReadWriteStream
+              .where((e) => e.$1 == _key)
+              .map((e) => e.$2)
+        ],
       )
           .map((p) => <int>[...p])
           .newStreamWithInitialValue(lastValue)
           .asBroadcastStream();
 
   /// this stream emits values:
-  ///   - anytime `read()` is called (TODO: does not work)
+  ///   - anytime `read()` is called
   ///   - anytime a notification arrives (if subscribed)
-  // TODO: need to verify
-  Stream<List<int>> get onValueReceived => WinBle.characteristicValueStreamOf(
-        address: _address,
-        serviceId: serviceUuid.str128,
-        characteristicId: characteristicUuid.str128,
+  Stream<List<int>> get onValueReceived => _mergeStreams(
+        [
+          WinBle.characteristicValueStreamOf(
+            address: _address,
+            serviceId: serviceUuid.str128,
+            characteristicId: characteristicUuid.str128,
+          ),
+          FlutterBluePlusWindows._charReadWriteStream
+              .where((e) => e.$1 == _key)
+              .map((e) => e.$2)
+        ],
       ).map((p) => <int>[...p]).asBroadcastStream();
 
-  // TODO: implementation is required
+  // TODO: need to verify
   bool get isNotifying =>
       FlutterBluePlusWindows._isNotifying[remoteId]?[_key] ?? false;
 
@@ -97,7 +109,8 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
       serviceId: serviceUuid.str128,
       characteristicId: characteristicUuid.str128,
     );
-
+    FlutterBluePlusWindows._charReadWriteStreamController.add((_key, value));
+    FlutterBluePlusWindows._lastChrs[remoteId]?[_key] = value;
     return value;
   }
 
@@ -110,15 +123,18 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
       service: serviceUuid.str128,
       characteristic: characteristicUuid.str128,
       data: Uint8List.fromList(value),
-      writeWithResponse: !withoutResponse, // propertiesWinBle.writeWithoutResponse ?? false,
+      writeWithResponse:
+          !withoutResponse, // propertiesWinBle.writeWithoutResponse ?? false,
     );
+    FlutterBluePlusWindows._charReadWriteStreamController.add((_key, value));
+    FlutterBluePlusWindows._lastChrs[remoteId]?[_key] = value;
   }
 
   // TODO: need to verify
   Future<bool> setNotifyValue(
     bool notify, {
     int timeout = 15, // TODO: missing implementation
-    bool forceIndications = false,  // TODO: missing implementation
+    bool forceIndications = false, // TODO: missing implementation
   }) async {
     /// unSubscribeFromCharacteristic
     try {
