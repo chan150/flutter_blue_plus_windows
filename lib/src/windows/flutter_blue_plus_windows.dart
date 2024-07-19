@@ -115,9 +115,17 @@ class FlutterBluePlusWindows {
   ///   - [androidUsesFineLocation] request ACCESS_FINE_LOCATION permission at runtime
   static Future<void> startScan({
     List<Guid> withServices = const [],
+    List<String> withRemoteIds = const [],
+    List<String> withNames = const [],
+    List<String> withKeywords = const [],
+    List<MsdFilter> withMsd = const [],
+    List<ServiceDataFilter> withServiceData = const [],
     Duration? timeout,
     Duration? removeIfGone,
+    bool continuousUpdates = false,
+    int continuousDivisor = 1,
     bool oneByOne = false,
+    AndroidScanMode androidScanMode = AndroidScanMode.lowLatency,
     bool androidUsesFineLocation = false,
   }) async {
     await _initialize();

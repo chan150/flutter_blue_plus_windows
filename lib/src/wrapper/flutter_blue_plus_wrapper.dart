@@ -6,26 +6,50 @@ import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 class FlutterBluePlus {
   static Future<void> startScan({
     List<Guid> withServices = const [],
+    List<String> withRemoteIds = const [],
+    List<String> withNames = const [],
+    List<String> withKeywords = const [],
+    List<MsdFilter> withMsd = const [],
+    List<ServiceDataFilter> withServiceData = const [],
     Duration? timeout,
     Duration? removeIfGone,
+    bool continuousUpdates = false,
+    int continuousDivisor = 1,
     bool oneByOne = false,
+    AndroidScanMode androidScanMode = AndroidScanMode.lowLatency,
     bool androidUsesFineLocation = false,
   }) async {
     if (Platform.isWindows) {
       return await FlutterBluePlusWindows.startScan(
         withServices: withServices,
+        withRemoteIds: withRemoteIds,
+        withNames: withNames,
+        withKeywords: withKeywords,
+        withMsd: withMsd,
+        withServiceData: withServiceData,
         timeout: timeout,
         removeIfGone: removeIfGone,
+        continuousUpdates:continuousUpdates,
+        continuousDivisor:continuousDivisor,
         oneByOne: oneByOne,
+        androidScanMode:androidScanMode,
         androidUsesFineLocation: androidUsesFineLocation,
       );
     }
 
     return await Mobile.FlutterBluePlus.startScan(
       withServices: withServices,
+      withRemoteIds: withRemoteIds,
+      withNames: withNames,
+      withKeywords: withKeywords,
+      withMsd: withMsd,
+      withServiceData: withServiceData,
       timeout: timeout,
       removeIfGone: removeIfGone,
+      continuousUpdates:continuousUpdates,
+      continuousDivisor:continuousDivisor,
       oneByOne: oneByOne,
+      androidScanMode:androidScanMode,
       androidUsesFineLocation: androidUsesFineLocation,
     );
   }
