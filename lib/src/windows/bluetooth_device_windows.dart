@@ -74,6 +74,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Future<void> disconnect({
+    int androidDelay = 2000, // TODO: implementation missing
     int timeout = 35, // TODO: implementation missing
     bool queue = true, // TODO: implementation missing
   }) async {
