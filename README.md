@@ -20,7 +20,7 @@ import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 ```
 
-### Scan for devices
+### Scan devices
 ```dart
 final scannedDevices = <ScanResult>{};
 
@@ -32,6 +32,20 @@ final sub = FlutterBluePlus.scanResults.expand((e)=>e).listen(scannedDevices.add
 await Future.delayed(timeout);
 sub.cancel();
 scannedDevices.forEach(print);
+```
+
+### Connect a device
+```dart
+final scannedDevice = scannedDevices
+    .where((scanResult) => scanResult.device.platformName == DEVICE_NAME)
+    .firstOrNull;
+final device = scannedDevice?.device;
+device?.connect();
+```
+
+### Disconnect the device
+```dart
+device?.disconnect();
 ```
 
 Check out the usage of Flutter Blue Plus on [Flutter Blue Plus](https://pub.dev/packages/flutter_blue_plus)
