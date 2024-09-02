@@ -175,7 +175,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Stream<int> get mtu async* {
-    yield rssi ?? -100;
+    yield await WinBle.getMaxMtuSize(_address);
   }
 
   Future<int> readRssi({int timeout = 15}) async {
