@@ -1,3 +1,6 @@
+## 1.24.0
+* Update `README.md`.
+
 ## 1.23.6
 * Add unimplemented notification for `read` or `write`.   
 
