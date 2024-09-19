@@ -27,8 +27,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   String get _address => remoteId.str.toLowerCase();
 
   // stream return whether or not we are currently discovering services
-  @Deprecated(
-      "planed for removal (Jan 2024). It can be easily implemented yourself") // deprecated on Aug 2023
+  @Deprecated("planed for removal (Jan 2024). It can be easily implemented yourself") // deprecated on Aug 2023
   Stream<bool> get isDiscoveringServices => _isDiscoveringServices.stream;
 
   // // Get services
@@ -40,13 +39,11 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   /// Get services
   ///  - returns empty if discoverServices() has not been called
   ///    or if your device does not have any services (rare)
-  List<BluetoothServiceWindows> get servicesList =>
-      FlutterBluePlusWindows._knownServices[remoteId] ?? [];
+  List<BluetoothServiceWindows> get servicesList => FlutterBluePlusWindows._knownServices[remoteId] ?? [];
 
   /// Stream of bluetooth services offered by the remote device
   ///   - this stream is only updated when you call discoverServices()
-  @Deprecated(
-      "planed for removal (Jan 2024). It can be easily implemented yourself") // deprecated on Aug 2023
+  @Deprecated("planed for removal (Jan 2024). It can be easily implemented yourself") // deprecated on Aug 2023
   Stream<List<BluetoothService>> get servicesStream {
     if (FlutterBluePlusWindows._knownServices[remoteId] != null) {
       return _services.stream.newStreamWithInitialValue(
@@ -57,19 +54,34 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     }
   }
 
+  /// Returns true if this device is currently connected to your app
+  bool get isConnected {
+    return FlutterBluePlusWindows.connectedDevices.contains(this);
+  }
+
+  /// Returns true if this device is currently disconnected from your app
+  bool get isDisconnected => isConnected == false;
+
   Future<void> connect({
-    Duration? timeout =
-        const Duration(seconds: 35), // TODO: implementation missing
+    Duration? timeout = const Duration(seconds: 35), // TODO: implementation missing
     bool autoConnect = false, // TODO: implementation missing
     int? mtu = 512, // TODO: implementation missing
   }) async {
+    for (final device in [...FlutterBluePlusWindows._removedDeviceSet]) {
+      try {
+        await WinBle.disconnect(device._address);
+        FlutterBluePlusWindows._removedDeviceSet.remove(device);
+      } catch (e) {
+        FlutterBluePlusWindows._removedDeviceSet.add(device);
+      }
+    }
+
     try {
       await WinBle.connect(_address);
     } catch (e) {
       print(e);
     } finally {
       FlutterBluePlusWindows._deviceSet.add(this);
-      // FlutterBluePlusWindows._removed.remove(this);
     }
   }
 
@@ -97,15 +109,13 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     bool subscribeToServicesChanged = true, // TODO: implementation missing
     int timeout = 15, // TODO: implementation missing
   }) async {
-    List<BluetoothServiceWindows> result =
-        List.from(FlutterBluePlusWindows._knownServices[remoteId] ?? []);
+    List<BluetoothServiceWindows> result = List.from(FlutterBluePlusWindows._knownServices[remoteId] ?? []);
 
     try {
       _isDiscoveringServices.add(true);
 
       final response = await WinBle.discoverServices(_address);
-      FlutterBluePlusWindows._characteristicCache[remoteId] ??=
-          <String, List<BluetoothCharacteristic>>{};
+      FlutterBluePlusWindows._characteristicCache[remoteId] ??= <String, List<BluetoothCharacteristic>>{};
 
       for (final serviceId in response) {
         final characteristic = await WinBle.discoverCharacteristics(
@@ -126,21 +136,20 @@ class BluetoothDeviceWindows extends BluetoothDevice {
         ];
       }
 
-      result = response
-          .map(
-            (p) => BluetoothServiceWindows(
-              remoteId: remoteId,
-              serviceUuid: Guid(p),
-              // TODO: implementation missing
-              isPrimary: true,
-              // TODO: implementation missing
-              characteristics:
-                  FlutterBluePlusWindows._characteristicCache[remoteId]![p]!,
-              // TODO: implementation missing
-              includedServices: [],
-            ),
-          )
-          .toList();
+      result = [
+        ...response.map(
+          (p) => BluetoothServiceWindows(
+            remoteId: remoteId,
+            serviceUuid: Guid(p),
+            // TODO: implementation missing
+            isPrimary: true,
+            // TODO: implementation missing
+            characteristics: FlutterBluePlusWindows._characteristicCache[remoteId]![p]!,
+            // TODO: implementation missing
+            includedServices: [],
+          ),
+        )
+      ];
 
       FlutterBluePlusWindows._knownServices[remoteId] = result;
 
@@ -187,6 +196,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     double predelay = 0.35,
     int timeout = 15,
   }) async {
+    // https://github.com/rohitsangwan01/win_ble/issues/8
     return await WinBle.getMaxMtuSize(_address);
   }
 
@@ -237,9 +247,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is BluetoothDevice &&
-          runtimeType == other.runtimeType &&
-          remoteId == other.remoteId);
+      (other is BluetoothDevice && runtimeType == other.runtimeType && remoteId == other.remoteId);
 
   @override
   int get hashCode => remoteId.hashCode;
