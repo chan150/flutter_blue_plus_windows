@@ -76,14 +76,14 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     bool autoConnect = false, // TODO: implementation missing
     int? mtu = 512, // TODO: implementation missing
   }) async {
-    for (final unhandledDevice in [...FlutterBluePlusWindows._unhandledDeviceSet]) {
-      try {
-        await _connectInternal(unhandledDevice);
-        FlutterBluePlusWindows._unhandledDeviceSet.remove(unhandledDevice);
-      } catch (e) {
-        FlutterBluePlusWindows._unhandledDeviceSet.add(unhandledDevice);
-      }
-    }
+    // for (final unhandledDevice in [...FlutterBluePlusWindows._unhandledDeviceSet]) {
+    //   try {
+    //     await _connectInternal(unhandledDevice);
+    //     FlutterBluePlusWindows._unhandledDeviceSet.remove(unhandledDevice);
+    //   } catch (e) {
+    //     FlutterBluePlusWindows._unhandledDeviceSet.add(unhandledDevice);
+    //   }
+    // }
     await _connectInternal(this);
   }
 

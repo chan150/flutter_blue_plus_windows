@@ -28,7 +28,7 @@ class FlutterBluePlusWindows {
 
   static final _deviceSet = <BluetoothDeviceWindows>{};
 
-  static final _unhandledDeviceSet = <BluetoothDeviceWindows>{};
+  // static final _unhandledDeviceSet = <BluetoothDeviceWindows>{};
 
   /// Flutter blue plus windows
   static final _charReadWriteStreamController = StreamController<(String, List<int>)>();
