@@ -62,18 +62,29 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   /// Returns true if this device is currently disconnected from your app
   bool get isDisconnected => isConnected == false;
 
+  Future<void> _connectInternal(BluetoothDeviceWindows device) async {
+    try {
+      await WinBle.connect(device._address);
+      FlutterBluePlusWindows._deviceSet.add(device);
+    } catch (e) {
+      log(e.toString());
+    }
+  }
+
   Future<void> connect({
     Duration? timeout = const Duration(seconds: 35), // TODO: implementation missing
     bool autoConnect = false, // TODO: implementation missing
     int? mtu = 512, // TODO: implementation missing
   }) async {
-    try {
-      await WinBle.connect(_address);
-    } catch (e) {
-      log(e.toString());
-    } finally {
-      FlutterBluePlusWindows._deviceSet.add(this);
+    for (final unhandledDevice in [...FlutterBluePlusWindows._unhandledDeviceSet]) {
+      try {
+        await _connectInternal(unhandledDevice);
+        FlutterBluePlusWindows._unhandledDeviceSet.remove(unhandledDevice);
+      } catch (e) {
+        FlutterBluePlusWindows._unhandledDeviceSet.add(unhandledDevice);
+      }
     }
+    await _connectInternal(this);
   }
 
   Future<void> disconnect({
