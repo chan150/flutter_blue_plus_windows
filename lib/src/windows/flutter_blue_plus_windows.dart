@@ -30,7 +30,6 @@ class FlutterBluePlusWindows {
   static List<BluetoothDeviceWindows> get _devices => [..._deviceSet];
 
   static final _deviceSet = <BluetoothDeviceWindows>{};
-  static final _removedDeviceSet = <BluetoothDeviceWindows>{};
 
   /// Flutter blue plus windows
   static final _charReadWriteStreamController =
@@ -69,8 +68,12 @@ class FlutterBluePlusWindows {
           if (devices.isEmpty) return;
 
           for (final device in devices) {
-            _removedDeviceSet.add(device);
             _deviceSet.remove(device);
+            try{
+              WinBle.unPair(device._address);
+            } catch(e){
+              log(e.toString());
+            }
           }
         }
       },

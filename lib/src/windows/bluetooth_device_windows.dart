@@ -67,15 +67,6 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     bool autoConnect = false, // TODO: implementation missing
     int? mtu = 512, // TODO: implementation missing
   }) async {
-    for (final device in [...FlutterBluePlusWindows._removedDeviceSet]) {
-      try {
-        await WinBle.disconnect(device._address);
-        FlutterBluePlusWindows._removedDeviceSet.remove(device);
-      } catch (e) {
-        FlutterBluePlusWindows._removedDeviceSet.add(device);
-      }
-    }
-
     try {
       await WinBle.connect(_address);
     } catch (e) {
