@@ -9,17 +9,14 @@ class FlutterBluePlusWindows {
   static final _isScanning = _StreamController(initialValue: false);
 
   // we always keep track of these device variables
-  static final _knownServices =
-      <DeviceIdentifier, List<BluetoothServiceWindows>>{};
+  static final _knownServices = <DeviceIdentifier, List<BluetoothServiceWindows>>{};
   static final Map<DeviceIdentifier, Map<String, List<int>>> _lastChrs = {};
   static final Map<DeviceIdentifier, Map<String, bool>> _isNotifying = {};
 
-  static final Map<DeviceIdentifier, Map<String, List<BluetoothCharacteristic>>>
-      _characteristicCache = {};
+  static final Map<DeviceIdentifier, Map<String, List<BluetoothCharacteristic>>> _characteristicCache = {};
 
   // stream used for the scanResults public api
-  static final _scanResultsList =
-      _StreamController(initialValue: <ScanResult>[]);
+  static final _scanResultsList = _StreamController(initialValue: <ScanResult>[]);
 
   // the subscription to the scan results stream
   static StreamSubscription<BleDevice?>? _scanSubscription;
@@ -32,15 +29,12 @@ class FlutterBluePlusWindows {
   static final _deviceSet = <BluetoothDeviceWindows>{};
 
   /// Flutter blue plus windows
-  static final _charReadWriteStreamController =
-      StreamController<(String, List<int>)>();
+  static final _charReadWriteStreamController = StreamController<(String, List<int>)>();
 
-  static final _charReadWriteStream =
-      _charReadWriteStreamController.stream.asBroadcastStream();
+  static final _charReadWriteStream = _charReadWriteStreamController.stream.asBroadcastStream();
 
   /// Flutter blue plus windows
-  static final _connectionStream =
-      _StreamController(initialValue: <String, bool>{});
+  static final _connectionStream = _StreamController(initialValue: <String, bool>{});
 
   static Future<void> _initialize() async {
     if (_initialized) return;
@@ -62,18 +56,13 @@ class FlutterBluePlusWindows {
         _connectionStream.add(map);
 
         if (!event['connected']) {
-          final devices = [
-            ..._deviceSet.where((device) => device._address == event['device']),
+          final removingDevices = [
+            ..._deviceSet.where(
+              (device) => device._address == event['device'],
+            ),
           ];
-          if (devices.isEmpty) return;
-
-          for (final device in devices) {
+          for (final device in removingDevices) {
             _deviceSet.remove(device);
-            try{
-              WinBle.unPair(device._address);
-            } catch(e){
-              log(e.toString());
-            }
           }
         }
       },
@@ -173,21 +162,14 @@ class FlutterBluePlusWindows {
       (BleDevice? winBleDevice) {
         if (winBleDevice == null) {
           // if null, this is just a periodic update for removing old results
-          output.removeWhere((elm) =>
-              DateTime.now().difference(elm.timeStamp) > removeIfGone!);
+          output.removeWhere((elm) => DateTime.now().difference(elm.timeStamp) > removeIfGone!);
 
           // push to stream
           _scanResultsList.add(List.from(output));
         } else {
           final remoteId = DeviceIdentifier(winBleDevice.address.toUpperCase());
-          final existedName = output
-              .where((sr) => sr.device.remoteId == remoteId)
-              .firstOrNull
-              ?.device
-              .platformName;
-          final deviceName = winBleDevice.name.isNotEmpty
-              ? winBleDevice.name
-              : existedName ?? '';
+          final existedName = output.where((sr) => sr.device.remoteId == remoteId).firstOrNull?.device.platformName;
+          final deviceName = winBleDevice.name.isNotEmpty ? winBleDevice.name : existedName ?? '';
 
           final device = BluetoothDeviceWindows(
             platformName: deviceName,
@@ -198,24 +180,17 @@ class FlutterBluePlusWindows {
             device: device,
             advertisementData: AdvertisementData(
               advName: deviceName,
-              txPowerLevel: winBleDevice.adStructures
-                  ?.where((e) => e.type == 10)
-                  .singleOrNull
-                  ?.data
-                  .firstOrNull,
+              txPowerLevel: winBleDevice.adStructures?.where((e) => e.type == 10).singleOrNull?.data.firstOrNull,
               //TODO: Should verify
               connectable: !winBleDevice.advType.contains('Non'),
               manufacturerData: {
                 if (winBleDevice.manufacturerData.length >= 2)
-                  winBleDevice.manufacturerData[0]:
-                      winBleDevice.manufacturerData.sublist(2),
+                  winBleDevice.manufacturerData[0]: winBleDevice.manufacturerData.sublist(2),
               },
               //TODO: implementation missing
               serviceData: {},
-              serviceUuids: winBleDevice.serviceUuids
-                  .map((e) =>
-                      Guid((e as String).replaceAll(RegExp(r'[{}]'), '')))
-                  .toList(),
+              serviceUuids:
+                  winBleDevice.serviceUuids.map((e) => Guid((e as String).replaceAll(RegExp(r'[{}]'), ''))).toList(),
               appearance: null,
             ),
             rssi: int.tryParse(winBleDevice.rssi) ?? -100,

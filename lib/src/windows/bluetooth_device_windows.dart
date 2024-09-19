@@ -70,7 +70,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     try {
       await WinBle.connect(_address);
     } catch (e) {
-      print(e);
+      log(e.toString());
     } finally {
       FlutterBluePlusWindows._deviceSet.add(this);
     }
@@ -86,10 +86,9 @@ class BluetoothDeviceWindows extends BluetoothDevice {
       // await WinBle.unPair(_address);
       await WinBle.disconnect(_address);
     } catch (e) {
-      print(e);
+      log(e.toString());
     } finally {
       FlutterBluePlusWindows._deviceSet.remove(this);
-      // FlutterBluePlusWindows._removed.add(this);
 
       FlutterBluePlusWindows._lastChrs[remoteId]?.clear();
       FlutterBluePlusWindows._isNotifying[remoteId]?.clear();
