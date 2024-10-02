@@ -131,7 +131,9 @@ class FlutterBluePlusWindows {
     List<Guid> withServices = const [],
     List<String> withRemoteIds = const [],
     List<String> withNames = const [],
+    //TODO: implementation missing
     List<String> withKeywords = const [],
+    //TODO: implementation missing
     List<MsdFilter> withMsd = const [],
     List<ServiceDataFilter> withServiceData = const [],
     Duration? timeout,
@@ -144,13 +146,6 @@ class FlutterBluePlusWindows {
     bool androidUsesFineLocation = false,
   }) async {
     await _initialize();
-
-    // check filters
-    bool hasOtherFilter = withServices.isNotEmpty ||
-        withRemoteIds.isNotEmpty ||
-        withNames.isNotEmpty ||
-        withMsd.isNotEmpty ||
-        withServiceData.isNotEmpty;
 
     // stop existing scan
     if (_isScanning.latestValue == true) {
@@ -211,11 +206,14 @@ class FlutterBluePlusWindows {
                 }
               : scanResult?.advertisementData.manufacturerData ?? {};
 
+          final rssi = int.tryParse(winBleDevice.rssi) ?? -100;
+
           final device = BluetoothDeviceWindows(
             platformName: deviceName,
             remoteId: remoteId,
-            rssi: int.tryParse(winBleDevice.rssi) ?? -100,
+            rssi: rssi,
           );
+
           final sr = ScanResult(
             device: device,
             advertisementData: AdvertisementData(
@@ -229,9 +227,24 @@ class FlutterBluePlusWindows {
               serviceUuids: serviceUuids,
               appearance: null,
             ),
-            rssi: int.tryParse(winBleDevice.rssi) ?? -100,
+            rssi: rssi,
             timeStamp: DateTime.now(),
           );
+
+          // filter with services
+          final isFilteredWithServices =
+              withServices.isNotEmpty && serviceUuids.where((service) => withServices.contains(service)).isEmpty;
+
+          // filter with remote ids
+          final isFilteredWithRemoteIds = withRemoteIds.isNotEmpty && !withRemoteIds.contains(remoteId);
+
+          // filter with names
+          final isFilteredWithNames = withNames.isNotEmpty && !withNames.contains(deviceName);
+
+          if (isFilteredWithServices || isFilteredWithRemoteIds || isFilteredWithNames) {
+            _scanResultsList.add(List.from(output));
+            return;
+          }
 
           // add result to output
           if (oneByOne) {

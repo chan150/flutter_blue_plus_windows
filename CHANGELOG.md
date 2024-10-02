@@ -1,3 +1,6 @@
+## 1.24.9
+* Implement scan filter (including `withServices`, `withRemoteIds`, `withNames`).  
+
 ## 1.24.8
 * Keep manufacturer data when scanning.
 
