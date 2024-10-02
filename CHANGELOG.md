@@ -1,3 +1,6 @@
+## 1.24.7
+* Keep service uuids when scanning.
+
 ## 1.24.0
 * Update `README.md`.
 

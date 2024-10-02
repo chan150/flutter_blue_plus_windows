@@ -16,6 +16,7 @@ class FlutterBluePlus {
     bool continuousUpdates = false,
     int continuousDivisor = 1,
     bool oneByOne = false,
+    bool androidLegacy = false,
     AndroidScanMode androidScanMode = AndroidScanMode.lowLatency,
     bool androidUsesFineLocation = false,
   }) async {
@@ -32,6 +33,7 @@ class FlutterBluePlus {
         continuousUpdates:continuousUpdates,
         continuousDivisor:continuousDivisor,
         oneByOne: oneByOne,
+        androidLegacy: androidLegacy,
         androidScanMode:androidScanMode,
         androidUsesFineLocation: androidUsesFineLocation,
       );
@@ -49,6 +51,7 @@ class FlutterBluePlus {
       continuousUpdates:continuousUpdates,
       continuousDivisor:continuousDivisor,
       oneByOne: oneByOne,
+      androidLegacy: androidLegacy,
       androidScanMode:androidScanMode,
       androidUsesFineLocation: androidUsesFineLocation,
     );

@@ -121,10 +121,18 @@ class FlutterBluePlusWindows {
     bool continuousUpdates = false,
     int continuousDivisor = 1,
     bool oneByOne = false,
+    bool androidLegacy = false,
     AndroidScanMode androidScanMode = AndroidScanMode.lowLatency,
     bool androidUsesFineLocation = false,
   }) async {
     await _initialize();
+
+    // check filters
+    bool hasOtherFilter = withServices.isNotEmpty ||
+        withRemoteIds.isNotEmpty ||
+        withNames.isNotEmpty ||
+        withMsd.isNotEmpty ||
+        withServiceData.isNotEmpty;
 
     // stop existing scan
     if (_isScanning.latestValue == true) {
@@ -162,6 +170,7 @@ class FlutterBluePlusWindows {
     // listen & push to `scanResults` stream
     _scanSubscription = outputStream.listen(
       (BleDevice? winBleDevice) {
+        // print(winBleDevice?.serviceUuids);
         if (winBleDevice == null) {
           // if null, this is just a periodic update for removing old results
           output.removeWhere((elm) => DateTime.now().difference(elm.timeStamp) > removeIfGone!);
@@ -170,8 +179,11 @@ class FlutterBluePlusWindows {
           _scanResultsList.add(List.from(output));
         } else {
           final remoteId = DeviceIdentifier(winBleDevice.address.toUpperCase());
-          final existedName = output.where((sr) => sr.device.remoteId == remoteId).firstOrNull?.device.platformName;
-          final deviceName = winBleDevice.name.isNotEmpty ? winBleDevice.name : existedName ?? '';
+          final scanResult = output.where((sr) => sr.device.remoteId == remoteId).firstOrNull;
+          final deviceName = winBleDevice.name.isNotEmpty ? winBleDevice.name : scanResult?.device.platformName ?? '';
+          final serviceUuids = winBleDevice.serviceUuids.isNotEmpty
+              ? [...winBleDevice.serviceUuids.map((e) => Guid((e as String).replaceAll(RegExp(r'[{}]'), '')))]
+              : scanResult?.advertisementData.serviceUuids ?? [];
 
           final device = BluetoothDeviceWindows(
             platformName: deviceName,
@@ -191,8 +203,7 @@ class FlutterBluePlusWindows {
               },
               //TODO: implementation missing
               serviceData: {},
-              serviceUuids:
-                  winBleDevice.serviceUuids.map((e) => Guid((e as String).replaceAll(RegExp(r'[{}]'), ''))).toList(),
+              serviceUuids: serviceUuids,
               appearance: null,
             ),
             rssi: int.tryParse(winBleDevice.rssi) ?? -100,
