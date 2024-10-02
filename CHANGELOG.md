@@ -1,3 +1,6 @@
+## 1.24.8
+* Keep manufacturer data when scanning.
+
 ## 1.24.7
 * Keep service uuids when scanning.
 

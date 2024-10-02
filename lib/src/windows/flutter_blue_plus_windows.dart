@@ -104,11 +104,29 @@ class FlutterBluePlusWindows {
   }
 
   /// Start a scan, and return a stream of results
+  /// Note: scan filters use an "or" behavior. i.e. if you set `withServices` & `withNames` we
+  /// return all the advertisments that match any of the specified services *or* any of the specified names.
+  ///   - [withServices] filter by advertised services
+  ///   - [withRemoteIds] filter for known remoteIds (iOS: 128-bit guid, android: 48-bit mac address)
+  ///   - [withNames] filter by advertised names (exact match)
+  ///   - [withKeywords] filter by advertised names (matches any substring)
+  ///   - [withMsd] filter by manfacture specific data
+  ///   - [withServiceData] filter by service data
   ///   - [timeout] calls stopScan after a specified duration
   ///   - [removeIfGone] if true, remove devices after they've stopped advertising for X duration
-  ///   - [oneByOne] if true, we will stream every advertistment one by one, including duplicates.
-  ///    If false, we deduplicate the advertisements, and return a list of devices.
-  ///   - [androidUsesFineLocation] request ACCESS_FINE_LOCATION permission at runtime
+  ///   - [continuousUpdates] If `true`, we continually update 'lastSeen' & 'rssi' by processing
+  ///        duplicate advertisements. This takes more power. You typically should not use this option.
+  ///   - [continuousDivisor] Useful to help performance. If divisor is 3, then two-thirds of advertisements are
+  ///        ignored, and one-third are processed. This reduces main-thread usage caused by the platform channel.
+  ///        The scan counting is per-device so you always get the 1st advertisement from each device.
+  ///        If divisor is 1, all advertisements are returned. This argument only matters for `continuousUpdates` mode.
+  ///   - [oneByOne] if `true`, we will stream every advertistment one by one, possibly including duplicates.
+  ///        If `false`, we deduplicate the advertisements, and return a list of devices.
+  ///   - [androidLegacy] Android only. If `true`, scan on 1M phy only.
+  ///        If `false`, scan on all supported phys. How the radio cycles through all the supported phys is purely
+  ///        dependent on the your Bluetooth stack implementation.
+  ///   - [androidScanMode] choose the android scan mode to use when scanning
+  ///   - [androidUsesFineLocation] request `ACCESS_FINE_LOCATION` permission at runtime
   static Future<void> startScan({
     List<Guid> withServices = const [],
     List<String> withRemoteIds = const [],
@@ -179,11 +197,19 @@ class FlutterBluePlusWindows {
           _scanResultsList.add(List.from(output));
         } else {
           final remoteId = DeviceIdentifier(winBleDevice.address.toUpperCase());
+
           final scanResult = output.where((sr) => sr.device.remoteId == remoteId).firstOrNull;
           final deviceName = winBleDevice.name.isNotEmpty ? winBleDevice.name : scanResult?.device.platformName ?? '';
           final serviceUuids = winBleDevice.serviceUuids.isNotEmpty
               ? [...winBleDevice.serviceUuids.map((e) => Guid((e as String).replaceAll(RegExp(r'[{}]'), '')))]
               : scanResult?.advertisementData.serviceUuids ?? [];
+
+          final manufacturerData = winBleDevice.manufacturerData.isNotEmpty
+              ? {
+                  if (winBleDevice.manufacturerData.length >= 2)
+                    winBleDevice.manufacturerData[0]: winBleDevice.manufacturerData.sublist(2),
+                }
+              : scanResult?.advertisementData.manufacturerData ?? {};
 
           final device = BluetoothDeviceWindows(
             platformName: deviceName,
@@ -197,10 +223,7 @@ class FlutterBluePlusWindows {
               txPowerLevel: winBleDevice.adStructures?.where((e) => e.type == 10).singleOrNull?.data.firstOrNull,
               //TODO: Should verify
               connectable: !winBleDevice.advType.contains('Non'),
-              manufacturerData: {
-                if (winBleDevice.manufacturerData.length >= 2)
-                  winBleDevice.manufacturerData[0]: winBleDevice.manufacturerData.sublist(2),
-              },
+              manufacturerData: manufacturerData,
               //TODO: implementation missing
               serviceData: {},
               serviceUuids: serviceUuids,
