@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as Mobile;
@@ -124,5 +125,10 @@ class FlutterBluePlus {
   static Future<List<BluetoothDevice>> get bondedDevices async {
     if (Platform.isWindows) return FlutterBluePlusWindows.connectedDevices;
     return await Mobile.FlutterBluePlus.bondedDevices;
+  }
+
+  static void cancelWhenScanComplete(StreamSubscription subscription) {
+    if (Platform.isWindows) return FlutterBluePlusWindows.cancelWhenScanComplete(subscription);
+     return Mobile.FlutterBluePlus.cancelWhenScanComplete(subscription);
   }
 }

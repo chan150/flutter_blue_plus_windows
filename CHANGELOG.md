@@ -1,3 +1,6 @@
+## 1.24.10
+* add support for `cancelWhenScanComplete`
+
 ## 1.24.9
 * Implement scan filter (including `withServices`, `withRemoteIds`, `withNames`).  
 

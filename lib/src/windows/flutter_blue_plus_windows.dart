@@ -12,8 +12,8 @@ class FlutterBluePlusWindows {
   static final _knownServices = <DeviceIdentifier, List<BluetoothServiceWindows>>{};
   static final Map<DeviceIdentifier, Map<String, List<int>>> _lastChrs = {};
   static final Map<DeviceIdentifier, Map<String, bool>> _isNotifying = {};
-
   static final Map<DeviceIdentifier, Map<String, List<BluetoothCharacteristic>>> _characteristicCache = {};
+  static final List<StreamSubscription> _scanSubscriptions = [];
 
   // stream used for the scanResults public api
   static final _scanResultsList = _StreamController(initialValue: <ScanResult>[]);
@@ -278,7 +278,19 @@ class FlutterBluePlusWindows {
     _scanTimeout?.cancel();
     _isScanning.add(false);
 
+    for (var subscription in _scanSubscriptions) {
+      subscription.cancel();
+    }
+
     _scanResultsList.latestValue = [];
+  }
+
+  /// Register a subscription to be canceled when scanning is complete.
+  /// This function simplifies cleanup, so you can prevent creating duplicate stream subscriptions.
+  ///   - this is an optional convenience function
+  ///   - prevents accidentally creating duplicate subscriptions before each scan
+  static void cancelWhenScanComplete(StreamSubscription subscription) {
+    _scanSubscriptions.add(subscription);
   }
 
   /// Sets the internal FlutterBlue log level
