@@ -186,7 +186,18 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Stream<int> get mtu async* {
-    yield await WinBle.getMaxMtuSize(_address);
+    bool isEmitted = false;
+    int retryCount = 0;
+    while (!isEmitted) {
+      if (retryCount > 3) throw "Device not found !";
+      try {
+        yield await WinBle.getMaxMtuSize(_address);
+        isEmitted = true;
+      } catch (e) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        log(e.toString());
+      }
+    }
   }
 
   Future<int> readRssi({int timeout = 15}) async {
