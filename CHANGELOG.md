@@ -1,5 +1,11 @@
+## 1.24.12
+* Fix minor bug w.r.t. `characteristic.isNotifying`.
+
+## 1.24.11
+* Fix breaking changes of FBP w.r.t. `systemDevices(List withServices)`.
+
 ## 1.24.10
-* add support for `cancelWhenScanComplete`
+* Add support for `cancelWhenScanComplete`
 
 ## 1.24.9
 * Implement scan filter (including `withServices`, `withRemoteIds`, `withNames`).  

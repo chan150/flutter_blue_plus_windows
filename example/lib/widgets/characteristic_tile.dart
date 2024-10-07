@@ -148,6 +148,17 @@ class _CharacteristicTileState extends State<CharacteristicTile> {
   Widget build(BuildContext context) {
     return ExpansionTile(
       title: ListTile(
+        onTap: () async {
+          final subscription = widget.characteristic.onValueReceived.listen((data) => print(data)); /// !!! NOT CALLED
+          widget.characteristic.device.cancelWhenDisconnected(subscription);
+          try {
+            await widget.characteristic.setNotifyValue(true); // !!! RETURNS TRUE
+            print('Notifying: ${widget.characteristic.isNotifying}'); // !!! PRINTS FALSE
+          } catch (e) {
+            await subscription.cancel();
+            print('Failed to enable notifications: $e'); // !!! NOT CALLED
+          }
+        },
         title: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,

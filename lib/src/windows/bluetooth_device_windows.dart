@@ -123,6 +123,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
           address: _address,
           serviceId: serviceId,
         );
+        FlutterBluePlusWindows._characteristicCache[remoteId] ??= {};
         FlutterBluePlusWindows._characteristicCache[remoteId]?[serviceId] ??= [
           ...characteristic.map(
             (e) => BluetoothCharacteristicWindows(
