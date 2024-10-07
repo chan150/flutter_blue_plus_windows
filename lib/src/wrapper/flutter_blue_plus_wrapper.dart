@@ -113,9 +113,10 @@ class FlutterBluePlus {
     return Mobile.FlutterBluePlus.connectedDevices;
   }
 
-  static Future<List<BluetoothDevice>> get systemDevices async {
+  static Future<List<BluetoothDevice>> systemDevices(List<Guid> withServices) async {
+    //TODO: connected devices => system devices
     if (Platform.isWindows) return FlutterBluePlusWindows.connectedDevices;
-    return await Mobile.FlutterBluePlus.systemDevices;
+    return await Mobile.FlutterBluePlus.systemDevices(withServices);
   }
 
   static Future<PhySupport> getPhySupport() {
