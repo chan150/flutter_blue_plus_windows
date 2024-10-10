@@ -13,6 +13,8 @@ class FlutterBluePlusWindows {
   static final Map<DeviceIdentifier, Map<String, List<int>>> _lastChrs = {};
   static final Map<DeviceIdentifier, Map<String, bool>> _isNotifying = {};
   static final Map<DeviceIdentifier, Map<String, List<BluetoothCharacteristic>>> _characteristicCache = {};
+  static final Map<DeviceIdentifier, List<StreamSubscription>> _deviceSubscriptions = {};
+  static final Map<DeviceIdentifier, List<StreamSubscription>> _delayedSubscriptions = {};
   static final List<StreamSubscription> _scanSubscriptions = [];
 
   // stream used for the scanResults public api
@@ -65,6 +67,17 @@ class FlutterBluePlusWindows {
           ];
           for (final device in removingDevices) {
             _deviceSet.remove(device);
+
+            _deviceSubscriptions[device.remoteId]?.forEach((s) => s.cancel());
+            _deviceSubscriptions.remove(device.remoteId);
+            // use delayed to update the stream before we cancel it
+            Future.delayed(Duration.zero).then((_) {
+              _delayedSubscriptions[device.remoteId]?.forEach((s) => s.cancel());
+              _delayedSubscriptions.remove(device.remoteId);
+            });
+
+            _lastChrs[device.remoteId]?.clear();
+            _isNotifying[device.remoteId]?.clear();
           }
         }
       },

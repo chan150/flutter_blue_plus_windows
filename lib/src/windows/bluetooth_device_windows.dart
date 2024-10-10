@@ -54,6 +54,28 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     }
   }
 
+  /// Register a subscription to be canceled when the device is disconnected.
+  /// This function simplifies cleanup, so you can prevent creating duplicate stream subscriptions.
+  ///   - this is an optional convenience function
+  ///   - prevents accidentally creating duplicate subscriptions on each reconnection.
+  ///   - [next] if true, the the stream will be canceled only on the *next* disconnection.
+  ///     This is useful if you setup your subscriptions before you connect.
+  ///   - [delayed] Note: This option is only meant for `connectionState` subscriptions.
+  ///     When `true`, we cancel after a small delay. This ensures the `connectionState`
+  ///     listener receives the `disconnected` event.
+  void cancelWhenDisconnected(StreamSubscription subscription,
+      {bool next = false, bool delayed = false}) {
+    if (isConnected == false && next == false) {
+      subscription.cancel(); // cancel immediately if already disconnected.
+    } else if (delayed) {
+      FlutterBluePlusWindows._delayedSubscriptions[remoteId] ??= [];
+      FlutterBluePlusWindows._delayedSubscriptions[remoteId]!.add(subscription);
+    } else {
+      FlutterBluePlusWindows._deviceSubscriptions[remoteId] ??= [];
+      FlutterBluePlusWindows._deviceSubscriptions[remoteId]!.add(subscription);
+    }
+  }
+
   /// Returns true if this device is currently connected to your app
   bool get isConnected {
     return FlutterBluePlusWindows.connectedDevices.contains(this);
@@ -100,6 +122,14 @@ class BluetoothDeviceWindows extends BluetoothDevice {
       log(e.toString());
     } finally {
       FlutterBluePlusWindows._deviceSet.remove(this);
+
+      FlutterBluePlusWindows._deviceSubscriptions[remoteId]?.forEach((s) => s.cancel());
+      FlutterBluePlusWindows._deviceSubscriptions.remove(remoteId);
+      // use delayed to update the stream before we cancel it
+      Future.delayed(Duration.zero).then((_) {
+        FlutterBluePlusWindows._delayedSubscriptions[remoteId]?.forEach((s) => s.cancel());
+        FlutterBluePlusWindows._delayedSubscriptions.remove(remoteId);
+      });
 
       FlutterBluePlusWindows._lastChrs[remoteId]?.clear();
       FlutterBluePlusWindows._isNotifying[remoteId]?.clear();
