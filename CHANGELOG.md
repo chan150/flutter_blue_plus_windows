@@ -1,3 +1,6 @@
+## 1.24.14
+* Fix Implement cancelOnDisconnect (@jefflongo  #16)
+
 ## 1.24.12
 * Fix minor bug w.r.t. `characteristic.isNotifying`.
 
