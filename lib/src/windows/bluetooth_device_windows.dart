@@ -63,8 +63,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   ///   - [delayed] Note: This option is only meant for `connectionState` subscriptions.
   ///     When `true`, we cancel after a small delay. This ensures the `connectionState`
   ///     listener receives the `disconnected` event.
-  void cancelWhenDisconnected(StreamSubscription subscription,
-      {bool next = false, bool delayed = false}) {
+  void cancelWhenDisconnected(StreamSubscription subscription, {bool next = false, bool delayed = false}) {
     if (isConnected == false && next == false) {
       subscription.cancel(); // cancel immediately if already disconnected.
     } else if (delayed) {
@@ -84,29 +83,17 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   /// Returns true if this device is currently disconnected from your app
   bool get isDisconnected => isConnected == false;
 
-  Future<void> _connectInternal(BluetoothDeviceWindows device) async {
-    try {
-      await WinBle.connect(device._address);
-      FlutterBluePlusWindows._deviceSet.add(device);
-    } catch (e) {
-      log(e.toString());
-    }
-  }
-
   Future<void> connect({
     Duration? timeout = const Duration(seconds: 35), // TODO: implementation missing
     bool autoConnect = false, // TODO: implementation missing
     int? mtu = 512, // TODO: implementation missing
   }) async {
-    // for (final unhandledDevice in [...FlutterBluePlusWindows._unhandledDeviceSet]) {
-    //   try {
-    //     await _connectInternal(unhandledDevice);
-    //     FlutterBluePlusWindows._unhandledDeviceSet.remove(unhandledDevice);
-    //   } catch (e) {
-    //     FlutterBluePlusWindows._unhandledDeviceSet.add(unhandledDevice);
-    //   }
-    // }
-    await _connectInternal(this);
+    try {
+      await WinBle.connect(_address);
+      FlutterBluePlusWindows._deviceSet.add(this);
+    } catch (e) {
+      log(e.toString());
+    }
   }
 
   Future<void> disconnect({
@@ -115,8 +102,6 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     bool queue = true, // TODO: implementation missing
   }) async {
     try {
-      // TODO: bug in WinBle; devices once paired are never connected unless the bonding is removed
-      // await WinBle.unPair(_address);
       await WinBle.disconnect(_address);
     } catch (e) {
       log(e.toString());
