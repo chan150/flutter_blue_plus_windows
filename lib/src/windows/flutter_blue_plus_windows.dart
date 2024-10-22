@@ -215,7 +215,7 @@ class FlutterBluePlusWindows {
           final manufacturerData = winBleDevice.manufacturerData.isNotEmpty
               ? {
                   if (winBleDevice.manufacturerData.length >= 2)
-                    winBleDevice.manufacturerData[0]: winBleDevice.manufacturerData.sublist(2),
+                    winBleDevice.manufacturerData[0] + (winBleDevice.manufacturerData[1] << 8): winBleDevice.manufacturerData.sublist(2),
                 }
               : scanResult?.advertisementData.manufacturerData ?? {};
 
