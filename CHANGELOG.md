@@ -1,5 +1,8 @@
+## 1.24.15
+* Fix a bug w.r.t. company ID in manufacturer data. (@betto-a #18)
+
 ## 1.24.14
-* Fix Implement cancelOnDisconnect (@jefflongo  #16)
+* Implement cancelOnDisconnect (@jefflongo  #16)
 
 ## 1.24.12
 * Fix minor bug w.r.t. `characteristic.isNotifying`.
