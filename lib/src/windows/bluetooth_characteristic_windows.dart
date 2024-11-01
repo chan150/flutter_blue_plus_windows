@@ -53,7 +53,7 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
 
   String get _key => "$serviceUuid:$characteristicUuid";
 
-  BluetoothDevice get device =>
+  FBP.BluetoothDevice get device =>
       FlutterBluePlusWindows.connectedDevices.firstWhere((device) => device.remoteId == remoteId);
 
   /// this variable is updated:

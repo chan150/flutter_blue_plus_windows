@@ -3,20 +3,16 @@
 
 part of 'windows.dart';
 
-class BluetoothDeviceWindows extends BluetoothDevice {
-  BluetoothDeviceWindows({
-    required super.remoteId,
-  });
+typedef BluetoothDevice = FBP.BluetoothDevice;
+
+class BluetoothDeviceWindows extends FBP.BluetoothDevice {
+  BluetoothDeviceWindows({required super.remoteId});
 
   // used for 'servicesStream' public api
   final _services = StreamController<List<BluetoothServiceWindows>>.broadcast();
 
-  // late final _connectionStream = WinBle.connectionStreamOf(remoteId.str);
-
   // used for 'isDiscoveringServices' public api
   final _isDiscoveringServices = _StreamController(initialValue: false);
-
-  // StreamSubscription<bool>? _subscription;
 
   String get _address => remoteId.str.toLowerCase();
 
@@ -24,7 +20,12 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   ///   - to connect, this device must have been discovered by your app in a previous scan
   ///   - iOS uses 128-bit uuids the remoteId, e.g. e006b3a7-ef7b-4980-a668-1f8005f84383
   ///   - Android uses 48-bit mac addresses as the remoteId, e.g. 06:E5:28:3B:FD:E0
-  BluetoothDeviceWindows.fromId(String remoteId) : super.fromId(remoteId);
+  static FBP.BluetoothDevice fromId(String remoteId) {
+    if (Platform.isWindows) {
+      return BluetoothDeviceWindows(remoteId: DeviceIdentifier(remoteId));
+    }
+    return FBP.BluetoothDevice.fromId(remoteId);
+  }
 
   /// platform name
   /// - this name is kept track of by the platform
@@ -284,7 +285,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is BluetoothDevice && runtimeType == other.runtimeType && remoteId == other.remoteId);
+      (other is BluetoothDeviceWindows && runtimeType == other.runtimeType && remoteId == other.remoteId);
 
   @override
   int get hashCode => remoteId.hashCode;

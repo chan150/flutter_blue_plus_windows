@@ -279,11 +279,11 @@ class FlutterBluePlusWindows {
     );
   }
 
-  static List<BluetoothDevice> get connectedDevices {
+  static List<FBP.BluetoothDevice> get connectedDevices {
     return _devices;
   }
 
-  static Future<List<BluetoothDevice>> get bondedDevices async {
+  static Future<List<BluetoothDeviceWindows>> get bondedDevices async {
     return _devices;
   }
 
