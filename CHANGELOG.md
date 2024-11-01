@@ -1,3 +1,6 @@
+## 1.24.18
+* Add implementation of `BluetoothDeviceWindow.fromId()`.
+
 ## 1.24.15
 * Fix a bug w.r.t. company ID in manufacturer data. (@betto-a #18)
 
