@@ -222,9 +222,9 @@ class FlutterBluePlusWindows {
           final rssi = int.tryParse(winBleDevice.rssi) ?? -100;
 
           final device = BluetoothDeviceWindows(
-            platformName: deviceName,
+            // platformName: deviceName,
             remoteId: remoteId,
-            rssi: rssi,
+            // rssi: rssi,
           );
 
           final sr = ScanResult(

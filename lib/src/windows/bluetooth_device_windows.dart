@@ -5,14 +5,12 @@ part of 'windows.dart';
 
 class BluetoothDeviceWindows extends BluetoothDevice {
   BluetoothDeviceWindows({
-    required this.platformName,
     required super.remoteId,
-    this.rssi,
   });
 
-  final int? rssi;
+  int? rssi;
 
-  final String platformName;
+  // String get platformName => FlutterBluePlusWindows;
 
   // used for 'servicesStream' public api
   final _services = StreamController<List<BluetoothServiceWindows>>.broadcast();
@@ -25,6 +23,17 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   // StreamSubscription<bool>? _subscription;
 
   String get _address => remoteId.str.toLowerCase();
+
+  /// Create a device from an id
+  ///   - to connect, this device must have been discovered by your app in a previous scan
+  ///   - iOS uses 128-bit uuids the remoteId, e.g. e006b3a7-ef7b-4980-a668-1f8005f84383
+  ///   - Android uses 48-bit mac addresses as the remoteId, e.g. 06:E5:28:3B:FD:E0
+  t(){
+    BluetoothDevice.fromId('');
+    BluetoothDeviceWindows;
+  }
+
+  BluetoothDeviceWindows.fromId(String remoteId) : super.fromId(remoteId);
 
   // stream return whether or not we are currently discovering services
   @Deprecated("planed for removal (Jan 2024). It can be easily implemented yourself") // deprecated on Aug 2023
