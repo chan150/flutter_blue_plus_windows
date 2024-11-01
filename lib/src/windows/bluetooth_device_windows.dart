@@ -3,8 +3,6 @@
 
 part of 'windows.dart';
 
-typedef BluetoothDevice = FBP.BluetoothDevice;
-
 class BluetoothDeviceWindows extends FBP.BluetoothDevice {
   BluetoothDeviceWindows({required super.remoteId});
 
