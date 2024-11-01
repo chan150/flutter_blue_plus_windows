@@ -8,10 +8,6 @@ class BluetoothDeviceWindows extends BluetoothDevice {
     required super.remoteId,
   });
 
-  int? rssi;
-
-  // String get platformName => FlutterBluePlusWindows;
-
   // used for 'servicesStream' public api
   final _services = StreamController<List<BluetoothServiceWindows>>.broadcast();
 
@@ -28,22 +24,26 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   ///   - to connect, this device must have been discovered by your app in a previous scan
   ///   - iOS uses 128-bit uuids the remoteId, e.g. e006b3a7-ef7b-4980-a668-1f8005f84383
   ///   - Android uses 48-bit mac addresses as the remoteId, e.g. 06:E5:28:3B:FD:E0
-  t(){
-    BluetoothDevice.fromId('');
-    BluetoothDeviceWindows;
-  }
-
   BluetoothDeviceWindows.fromId(String remoteId) : super.fromId(remoteId);
+
+  /// platform name
+  /// - this name is kept track of by the platform
+  /// - this name usually persist between app restarts
+  /// - iOS: after you connect, iOS uses the GAP name characteristic (0x2A00)
+  ///        if it exists. Otherwise iOS use the advertised name.
+  /// - Android: always uses the advertised name
+  String get platformName => FlutterBluePlusWindows._platformNames[remoteId] ?? "";
+
+  /// Advertised Named
+  ///  - this is the name advertised by the device during scanning
+  ///  - it is only available after you scan with FlutterBluePlus
+  ///  - it is cleared when the app restarts.
+  ///  - not all devices advertise a name
+  String get advName => FlutterBluePlusWindows._advNames[remoteId] ?? "";
 
   // stream return whether or not we are currently discovering services
   @Deprecated("planed for removal (Jan 2024). It can be easily implemented yourself") // deprecated on Aug 2023
   Stream<bool> get isDiscoveringServices => _isDiscoveringServices.stream;
-
-  // // Get services
-  // //  - returns null if discoverServices() has not been called
-  // //  - this is cleared on disconnection. You must call discoverServices() again
-  // List<BluetoothService>? get servicesList =>
-  //     FlutterBluePlusWindows._knownServices[remoteId];
 
   /// Get services
   ///  - returns empty if discoverServices() has not been called
@@ -225,7 +225,7 @@ class BluetoothDeviceWindows extends BluetoothDevice {
   }
 
   Future<int> readRssi({int timeout = 15}) async {
-    return rssi ?? -100;
+    return FlutterBluePlusWindows._rssiMap[remoteId] ?? -100;
   }
 
   Future<int> requestMtu(

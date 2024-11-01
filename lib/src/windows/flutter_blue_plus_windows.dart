@@ -9,6 +9,9 @@ class FlutterBluePlusWindows {
   static final _isScanning = _StreamController(initialValue: false);
 
   // we always keep track of these device variables
+  static final _platformNames = <DeviceIdentifier, String>{};
+  static final _advNames = <DeviceIdentifier, String>{};
+  static final _rssiMap = <DeviceIdentifier, int?>{};
   static final _knownServices = <DeviceIdentifier, List<BluetoothServiceWindows>>{};
   static final Map<DeviceIdentifier, Map<String, List<int>>> _lastChrs = {};
   static final Map<DeviceIdentifier, Map<String, bool>> _isNotifying = {};
@@ -215,17 +218,18 @@ class FlutterBluePlusWindows {
           final manufacturerData = winBleDevice.manufacturerData.isNotEmpty
               ? {
                   if (winBleDevice.manufacturerData.length >= 2)
-                    winBleDevice.manufacturerData[0] + (winBleDevice.manufacturerData[1] << 8): winBleDevice.manufacturerData.sublist(2),
+                    winBleDevice.manufacturerData[0] + (winBleDevice.manufacturerData[1] << 8):
+                        winBleDevice.manufacturerData.sublist(2),
                 }
               : scanResult?.advertisementData.manufacturerData ?? {};
 
           final rssi = int.tryParse(winBleDevice.rssi) ?? -100;
 
-          final device = BluetoothDeviceWindows(
-            // platformName: deviceName,
-            remoteId: remoteId,
-            // rssi: rssi,
-          );
+          FlutterBluePlusWindows._platformNames[remoteId] = deviceName;
+          FlutterBluePlusWindows._advNames[remoteId] = deviceName;
+          FlutterBluePlusWindows._rssiMap[remoteId] = rssi;
+
+          final device = BluetoothDeviceWindows(remoteId: remoteId);
 
           final sr = ScanResult(
             device: device,
