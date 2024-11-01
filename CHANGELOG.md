@@ -1,5 +1,8 @@
+## 1.24.19
+* Fix a bug with `onValueReceived` of emitting write packet #22.
+
 ## 1.24.18
-* Add implementation of `BluetoothDeviceWindow.fromId()`.
+* Add implementation of `BluetoothDeviceWindow.fromId()` #21.
 
 ## 1.24.15
 * Fix a bug w.r.t. company ID in manufacturer data. (@betto-a #18)

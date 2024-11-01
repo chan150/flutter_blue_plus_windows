@@ -37,8 +37,10 @@ class FlutterBluePlusWindows {
 
   /// Flutter blue plus windows
   static final _charReadWriteStreamController = StreamController<(String, List<int>)>();
+  static final _charReadStreamController = StreamController<(String, List<int>)>();
 
   static final _charReadWriteStream = _charReadWriteStreamController.stream.asBroadcastStream();
+  static final _charReadStream = _charReadStreamController.stream.asBroadcastStream();
 
   /// Flutter blue plus windows
   static final _connectionStream = _StreamController(initialValue: <String, bool>{});
