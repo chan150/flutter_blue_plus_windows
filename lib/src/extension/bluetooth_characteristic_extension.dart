@@ -9,6 +9,7 @@ extension BluetoothCharacteristicExtension on BluetoothCharacteristic {
       characteristicUuid: characteristicUuid,
       descriptors: [for (final d in descriptors) d.toProto()],
       properties: properties.toProto(),
+      // primaryServiceUuid: null, // TODO:  API changes
     );
   }
 }

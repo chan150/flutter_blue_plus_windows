@@ -8,6 +8,7 @@ extension BluetoothServiceExtension on BluetoothService {
       isPrimary: isPrimary,
       characteristics: [for (final c in characteristics) c.toProto()],
       includedServices: [for (final s in includedServices) s.toProto()],
+      // primaryServiceUuid: null, // TODO:  API changes
     );
   }
 }

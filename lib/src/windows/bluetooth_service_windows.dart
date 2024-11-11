@@ -20,6 +20,7 @@ class BluetoothServiceWindows extends BluetoothService {
             characteristics: [for (final c in characteristics) c.toProto()],
             isPrimary: isPrimary,
             includedServices: [for (final s in includedServices) s.toProto()],
+            // primaryServiceUuid: null, // TODO: API changes
           ),
         );
 }
