@@ -1,9 +1,12 @@
+## 1.24.22
+* Upgrade FBP version to `>=1.32.4 <=1.40.0` #24.
+
 ## 1.24.21
 * fix: startScan() doesn't return correct ScanResult #25
 
 ## 1.24.20
 * Downgrade FBP version to `>=1.32.4 <=1.33.6` due to the breaking changes.
-* After upgrade process, the dependencies will be returned to `>=1.34.4 <1.40.0`.  
+* After upgrade process, the dependencies will be returned to `>=1.34.4 <1.40.0` #24.  
 
 ## 1.24.19
 * Fix a bug with `onValueReceived` of emitting write packet #22.

@@ -5,11 +5,11 @@ extension BluetoothCharacteristicExtension on BluetoothCharacteristic {
     return BmBluetoothCharacteristic(
       remoteId: DeviceIdentifier(remoteId.str),
       serviceUuid: serviceUuid,
-      secondaryServiceUuid: secondaryServiceUuid,
+      // secondaryServiceUuid: secondaryServiceUuid,
       characteristicUuid: characteristicUuid,
       descriptors: [for (final d in descriptors) d.toProto()],
       properties: properties.toProto(),
-      // primaryServiceUuid: null, // TODO:  API changes
+      primaryServiceUuid: null, // TODO:  API changes
     );
   }
 }
