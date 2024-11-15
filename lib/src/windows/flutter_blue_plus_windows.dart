@@ -233,6 +233,9 @@ class FlutterBluePlusWindows {
 
           final device = BluetoothDeviceWindows(remoteId: remoteId);
 
+          String hex(int value) => value.toRadixString(16).padLeft(2, '0');
+          String hexToId(Iterable<int> values) => values.map((e)=> hex(e)).join();
+
           final sr = ScanResult(
             device: device,
             advertisementData: AdvertisementData(
@@ -241,8 +244,17 @@ class FlutterBluePlusWindows {
               //TODO: Should verify
               connectable: !winBleDevice.advType.contains('Non'),
               manufacturerData: manufacturerData,
-              //TODO: implementation missing
-              serviceData: {},
+              serviceData: {
+                for (final advStructures in winBleDevice.adStructures ?? <AdStructure>[])
+                  if (advStructures.type == 0x16 && advStructures.data.length >= 2)
+                    Guid(hexToId(advStructures.data.sublist(0,2).reversed)): advStructures.data.sublist(2),
+                for (final advStructures in winBleDevice.adStructures ?? <AdStructure>[])
+                  if (advStructures.type == 0x20 && advStructures.data.length >= 4)
+                    Guid(hexToId(advStructures.data.sublist(0,4).reversed)): advStructures.data.sublist(4),
+                for (final advStructures in winBleDevice.adStructures ?? <AdStructure>[])
+                  if (advStructures.type == 0x21 && advStructures.data.length >= 16)
+                    Guid(hexToId(advStructures.data.sublist(0,16).reversed)): advStructures.data.sublist(16),
+              },
               serviceUuids: serviceUuids,
               appearance: null,
             ),
