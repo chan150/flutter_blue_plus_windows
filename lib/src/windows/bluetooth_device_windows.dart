@@ -195,18 +195,11 @@ class BluetoothDeviceWindows extends FBP.BluetoothDevice {
 
     final map = FlutterBluePlusWindows._connectionStream.latestValue;
 
-    // log('Connection State is started');
-
     if (map[_address] != null) {
       yield map[_address]!.isConnected;
     }
 
     yield* WinBle.connectionStreamOf(_address).map((e) => e.isConnected);
-
-    // await for (final event in WinBle.connectionStreamOf(_address)) {
-    //   yield event.isConnected;
-    // }
-    // log('Connection State is closed');
   }
 
   Stream<int> get mtu async* {

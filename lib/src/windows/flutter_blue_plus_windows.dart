@@ -73,23 +73,18 @@ class FlutterBluePlusWindows {
           ];
           for (final device in removingDevices) {
             _deviceSet.remove(device);
-            // print(device.remoteId.str.toLowerCase());
-            // WinBle.connect(device.remoteId.str.toLowerCase());
-            // if (!_removedDeviceTracer.keys.contains(device)) {
-            //   WinBle.connect(device.remoteId.str.toLowerCase());
-            //   _removedDeviceTracer[device] = WinBle.connectionStreamOf(device.remoteId.str.toLowerCase()).listen(
-            //     (event) {
-            //       final map = {device.remoteId.str.toLowerCase(): event};
-            //       log('$map - map');
-            //       _connectionStream.add(map);
-            //       if(event) {
-            //         _deviceSet.add(device);
-            //         _removedDeviceTracer[device]?.cancel();
-            //         _removedDeviceTracer.remove(device);
-            //       }
-            //     },
-            //   );
-            // }
+            if (!_removedDeviceTracer.keys.contains(device)) {
+              _removedDeviceTracer[device] = Stream.periodic(const Duration(seconds: 10), (_) => device).listen(
+                (event) {
+                  if(event.isConnected) {
+                    _removedDeviceTracer[device]?.cancel();
+                    _removedDeviceTracer.remove(device);
+                    return;
+                  }
+                  event.connect();
+                },
+              );
+            }
 
             _deviceSubscriptions[device.remoteId]?.forEach((s) => s.cancel());
             _deviceSubscriptions.remove(device.remoteId);
@@ -207,9 +202,7 @@ class FlutterBluePlusWindows {
     // check every 250ms for gone devices?
     late Stream<BleDevice?> outputStream;
     if (removeIfGone != null) {
-      outputStream = _mergeStreams(
-        [WinBle.scanStream, Stream.periodic(Duration(milliseconds: 250))],
-      );
+      outputStream = _mergeStreams([WinBle.scanStream, Stream.periodic(Duration(milliseconds: 250))]);
     } else {
       outputStream = WinBle.scanStream;
     }
@@ -228,7 +221,6 @@ class FlutterBluePlusWindows {
           _scanResultsList.add(List.from(output));
         } else {
           final remoteId = DeviceIdentifier(winBleDevice.address.toUpperCase());
-
           final scanResult = output.where((sr) => sr.device.remoteId == remoteId).firstOrNull;
           final deviceName = winBleDevice.name.isNotEmpty ? winBleDevice.name : scanResult?.device.platformName ?? '';
           final serviceUuids = winBleDevice.serviceUuids.isNotEmpty

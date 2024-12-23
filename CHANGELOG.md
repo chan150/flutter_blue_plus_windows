@@ -1,3 +1,6 @@
+## 1.25.0
+* Ensure tracing connection when reconnection occurs after force disconnection.   
+
 ## 1.24.22
 * Upgrade FBP version to `>=1.32.4 <=1.40.0` #24.
 
