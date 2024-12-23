@@ -201,10 +201,11 @@ class BluetoothDeviceWindows extends FBP.BluetoothDevice {
       yield map[_address]!.isConnected;
     }
 
-    await for (final event in WinBle.connectionStreamOf(_address)) {
-      yield event.isConnected;
-    }
+    yield* WinBle.connectionStreamOf(_address).map((e) => e.isConnected);
 
+    // await for (final event in WinBle.connectionStreamOf(_address)) {
+    //   yield event.isConnected;
+    // }
     // log('Connection State is closed');
   }
 

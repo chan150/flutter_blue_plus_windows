@@ -73,20 +73,23 @@ class FlutterBluePlusWindows {
           ];
           for (final device in removingDevices) {
             _deviceSet.remove(device);
-            if (!_removedDeviceTracer.keys.contains(device)) {
-              _removedDeviceTracer[device] = WinBle.connectionStreamOf(device.remoteId.str.toLowerCase()).listen(
-                (event) {
-                  final map = {device.remoteId.str.toLowerCase(): event};
-                  log('$map - map');
-                  _connectionStream.add(map);
-                  if(event) {
-                    _deviceSet.add(device);
-                    _removedDeviceTracer[device]?.cancel();
-                    _removedDeviceTracer.remove(device);
-                  }
-                },
-              );
-            }
+            // print(device.remoteId.str.toLowerCase());
+            // WinBle.connect(device.remoteId.str.toLowerCase());
+            // if (!_removedDeviceTracer.keys.contains(device)) {
+            //   WinBle.connect(device.remoteId.str.toLowerCase());
+            //   _removedDeviceTracer[device] = WinBle.connectionStreamOf(device.remoteId.str.toLowerCase()).listen(
+            //     (event) {
+            //       final map = {device.remoteId.str.toLowerCase(): event};
+            //       log('$map - map');
+            //       _connectionStream.add(map);
+            //       if(event) {
+            //         _deviceSet.add(device);
+            //         _removedDeviceTracer[device]?.cancel();
+            //         _removedDeviceTracer.remove(device);
+            //       }
+            //     },
+            //   );
+            // }
 
             _deviceSubscriptions[device.remoteId]?.forEach((s) => s.cancel());
             _deviceSubscriptions.remove(device.remoteId);
