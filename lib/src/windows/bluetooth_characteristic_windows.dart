@@ -20,7 +20,6 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
           BmBluetoothCharacteristic(
             remoteId: DeviceIdentifier(remoteId.str),
             serviceUuid: serviceUuid,
-            // secondaryServiceUuid: secondaryServiceUuid,
             characteristicUuid: characteristicUuid,
             descriptors: [
               for (final descriptor in descriptors)
