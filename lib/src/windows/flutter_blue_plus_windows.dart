@@ -32,6 +32,7 @@ class FlutterBluePlusWindows {
   static List<BluetoothDeviceWindows> get _devices => [..._deviceSet];
 
   static final _deviceSet = <BluetoothDeviceWindows>{};
+  static final _removedDeviceTracer = <BluetoothDeviceWindows, StreamSubscription>{};
 
   // static final _unhandledDeviceSet = <BluetoothDeviceWindows>{};
 
@@ -72,6 +73,20 @@ class FlutterBluePlusWindows {
           ];
           for (final device in removingDevices) {
             _deviceSet.remove(device);
+            if (!_removedDeviceTracer.keys.contains(device)) {
+              _removedDeviceTracer[device] = WinBle.connectionStreamOf(device.remoteId.str.toLowerCase()).listen(
+                (event) {
+                  final map = {device.remoteId.str.toLowerCase(): event};
+                  log('$map - map');
+                  _connectionStream.add(map);
+                  if(event) {
+                    _deviceSet.add(device);
+                    _removedDeviceTracer[device]?.cancel();
+                    _removedDeviceTracer.remove(device);
+                  }
+                },
+              );
+            }
 
             _deviceSubscriptions[device.remoteId]?.forEach((s) => s.cancel());
             _deviceSubscriptions.remove(device.remoteId);
@@ -234,7 +249,7 @@ class FlutterBluePlusWindows {
           final device = BluetoothDeviceWindows(remoteId: remoteId);
 
           String hex(int value) => value.toRadixString(16).padLeft(2, '0');
-          String hexToId(Iterable<int> values) => values.map((e)=> hex(e)).join();
+          String hexToId(Iterable<int> values) => values.map((e) => hex(e)).join();
 
           final sr = ScanResult(
             device: device,
@@ -247,13 +262,13 @@ class FlutterBluePlusWindows {
               serviceData: {
                 for (final advStructures in winBleDevice.adStructures ?? <AdStructure>[])
                   if (advStructures.type == 0x16 && advStructures.data.length >= 2)
-                    Guid(hexToId(advStructures.data.sublist(0,2).reversed)): advStructures.data.sublist(2),
+                    Guid(hexToId(advStructures.data.sublist(0, 2).reversed)): advStructures.data.sublist(2),
                 for (final advStructures in winBleDevice.adStructures ?? <AdStructure>[])
                   if (advStructures.type == 0x20 && advStructures.data.length >= 4)
-                    Guid(hexToId(advStructures.data.sublist(0,4).reversed)): advStructures.data.sublist(4),
+                    Guid(hexToId(advStructures.data.sublist(0, 4).reversed)): advStructures.data.sublist(4),
                 for (final advStructures in winBleDevice.adStructures ?? <AdStructure>[])
                   if (advStructures.type == 0x21 && advStructures.data.length >= 16)
-                    Guid(hexToId(advStructures.data.sublist(0,16).reversed)): advStructures.data.sublist(16),
+                    Guid(hexToId(advStructures.data.sublist(0, 16).reversed)): advStructures.data.sublist(16),
               },
               serviceUuids: serviceUuids,
               appearance: null,
