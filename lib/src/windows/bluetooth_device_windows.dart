@@ -206,7 +206,8 @@ class BluetoothDeviceWindows extends FBP.BluetoothDevice {
     bool isEmitted = false;
     int retryCount = 0;
     while (!isEmitted) {
-      if (retryCount > 3) throw "Device not found !";
+      if (retryCount > 3) throw "Device not found!";
+      retryCount++;
       try {
         yield await WinBle.getMaxMtuSize(_address);
         isEmitted = true;
