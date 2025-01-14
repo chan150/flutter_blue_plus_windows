@@ -20,7 +20,7 @@ class BluetoothDeviceWindows extends FBP.BluetoothDevice {
   ///   - Android uses 48-bit mac addresses as the remoteId, e.g. 06:E5:28:3B:FD:E0
   static FBP.BluetoothDevice fromId(String remoteId) {
     if (Platform.isWindows) {
-      return BluetoothDeviceWindows(remoteId: DeviceIdentifier(remoteId));
+      return BluetoothDeviceWindows(remoteId: DeviceIdentifier(remoteId.toUpperCase()));
     }
     return FBP.BluetoothDevice.fromId(remoteId);
   }
