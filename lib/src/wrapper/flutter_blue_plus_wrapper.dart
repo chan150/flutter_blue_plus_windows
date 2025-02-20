@@ -91,6 +91,11 @@ class FlutterBluePlus {
   /// TODO: need to verify
   static LogLevel get logLevel => FBP.FlutterBluePlus.logLevel;
 
+  static Future<void> setOptions({bool restoreState = false, bool showPowerAlert = true}) async {
+    if (Platform.isWindows) return;
+    FBP.FlutterBluePlus.setOptions(restoreState: restoreState, showPowerAlert: showPowerAlert);
+  }
+
   static Future<bool> get isSupported async {
     if (Platform.isWindows) return await FlutterBluePlusWindows.isSupported;
     return await FBP.FlutterBluePlus.isSupported;
