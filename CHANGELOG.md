@@ -1,5 +1,8 @@
+## 1.26.1
+* Add setOptions.
+
 ## 1.26.0
-* set `flutter_blue_plus` upperbound <1.35.0 (due to api changes)
+* Set `flutter_blue_plus` upperbound <1.35.0 (due to api changes)
 
 ## 1.25.0
 * Ensure tracing connection when reconnection occurs after force disconnection.   
