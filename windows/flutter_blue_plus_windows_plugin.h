@@ -48,6 +48,9 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   void OnAdvertisementStopped(
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher&,
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcherStoppedEventArgs&);
+  
+  winrt::fire_and_forget GetSystemDevicesAsync(
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   winrt::fire_and_forget ConnectAsync(
       std::string remote_id,

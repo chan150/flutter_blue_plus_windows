@@ -112,7 +112,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementStopped(
     const BluetoothLEAdvertisementWatcherStoppedEventArgs&) {
 }
 
-fire_and_forget GetSystemDevicesAsync(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetSystemDevicesAsync(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
     try {
         auto selector = BluetoothDevice::GetDeviceSelectorFromPairingState(true);
         DeviceInformationCollection deviceInfoCollection = co_await DeviceInformation::FindAllAsync(selector);
@@ -122,9 +122,22 @@ fire_and_forget GetSystemDevicesAsync(std::unique_ptr<flutter::MethodResult<flut
 
         for (auto&& deviceInfo : deviceInfoCollection) {
             try {
+                auto bleDevice = co_await BluetoothLEDevice::FromIdAsync(deviceInfo.Id());
+                if (!bleDevice) {
+                    continue;
+                }
+
+                std::string remote_id = uint64_to_mac_string(bleDevice.BluetoothAddress());
+
+                auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+                    [&](const auto& pair) { return pair.first == remote_id; });
+
+                bool is_connected = (it != connected_devices_.end());
+
                 flutter::EncodableMap deviceMap = {};
-                deviceMap[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(utils::to_string(deviceInfo.Id()));
+                deviceMap[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
                 deviceMap[flutter::EncodableValue("platform_name")] = flutter::EncodableValue(utils::to_string(deviceInfo.Name()));
+                deviceMap[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(is_connected ? 1 : 0);
                 deviceList.push_back(flutter::EncodableValue(deviceMap));
             }
             catch (const hresult_error& e) {
