@@ -9,10 +9,12 @@
 #include <winrt/Windows.Devices.Bluetooth.Advertisement.h>
 #include <winrt/Windows.Devices.Enumeration.h>
 #include <winrt/Windows.Devices.Radios.h>
+#include <winrt/Windows.Foundation.h>
 
 #include <memory>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 
 using namespace winrt;
 using namespace Windows::Foundation;
@@ -86,16 +88,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
     const BluetoothLEAdvertisementWatcher&,
     const BluetoothLEAdvertisementReceivedEventArgs& args) {
     if (channel_) {
-        uint64_t addr = args.BluetoothAddress();
-        std::stringstream stream;
-        stream << std::hex << std::uppercase << std::setfill('0')
-            << std::setw(2) << ((addr >> 40) & 0xFF) << ":"
-            << std::setw(2) << ((addr >> 32) & 0xFF) << ":"
-            << std::setw(2) << ((addr >> 24) & 0xFF) << ":"
-            << std::setw(2) << ((addr >> 16) & 0xFF) << ":"
-            << std::setw(2) << ((addr >> 8) & 0xFF) << ":"
-            << std::setw(2) << (addr & 0xFF);
-        std::string remote_id = stream.str();
+        std::string remote_id = uint64_to_mac_string(args.BluetoothAddress());
 
         flutter::EncodableMap map;
         map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
@@ -108,8 +101,6 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
         map[flutter::EncodableValue("rssi")] =
             flutter::EncodableValue(static_cast<int32_t>(args.RawSignalStrengthInDBm()));
 
-        // TODO: Populate other fields like manufacturer data, service UUIDs, etc.
-
         flutter::EncodableMap response;
         response[flutter::EncodableValue("advertisements")] = flutter::EncodableList{ flutter::EncodableValue(map) };
         channel_->InvokeMethod("OnScanResponse", std::make_unique<flutter::EncodableValue>(response));
@@ -118,8 +109,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
 
 void FlutterBluePlusWindowsPlugin::OnAdvertisementStopped(
     const BluetoothLEAdvertisementWatcher&,
-    const BluetoothLEAdvertisementWatcherStoppedEventArgs& args) {
-    // This can be used to notify Flutter that the scan has stopped, if needed.
+    const BluetoothLEAdvertisementWatcherStoppedEventArgs&) {
 }
 
 fire_and_forget GetSystemDevicesAsync(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -199,7 +189,13 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
         auto device = co_await BluetoothLEDevice::FromBluetoothAddressAsync(bluetoothAddress);
 
         if (device) {
-            connected_devices_[remote_id] = device;
+            auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+                [&](const auto& pair) { return pair.first == remote_id; });
+            if (it != connected_devices_.end()) {
+                it->second = device;
+            } else {
+                connected_devices_.emplace_back(remote_id, device);
+            }
             device.ConnectionStatusChanged({ this, &FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged });
             result->Success(flutter::EncodableValue(true));
         }
@@ -213,17 +209,31 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
     co_return;
 }
 
+std::string FlutterBluePlusWindowsPlugin::uint64_to_mac_string(uint64_t addr) {
+    std::stringstream stream;
+    stream << std::hex << std::uppercase << std::setfill('0')
+        << std::setw(2) << ((addr >> 40) & 0xFF) << ":"
+        << std::setw(2) << ((addr >> 32) & 0xFF) << ":"
+        << std::setw(2) << ((addr >> 24) & 0xFF) << ":"
+        << std::setw(2) << ((addr >> 16) & 0xFF) << ":"
+        << std::setw(2) << ((addr >> 8) & 0xFF) << ":"
+        << std::setw(2) << (addr & 0xFF);
+    return stream.str();
+}
+
 void FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged(
     const BluetoothLEDevice& device,
     const IInspectable&) {
     if (device.ConnectionStatus() == BluetoothConnectionStatus::Disconnected) {
-        // Find the device by its address and remove it from the map.
-        // This is not efficient, but it's the only way with the current API.
-        for (auto it = connected_devices_.begin(); it != connected_devices_.end(); ++it) {
-            if (it->second.BluetoothAddress() == device.BluetoothAddress()) {
-                connected_devices_.erase(it);
-                break;
-            }
+        std::string remote_id = uint64_to_mac_string(device.BluetoothAddress());
+        auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+            [&](const auto& pair) { return pair.first == remote_id; });
+        if (it != connected_devices_.end()) {
+            flutter::EncodableMap connection_state;
+            connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+            connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); // disconnected
+            channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
+            connected_devices_.erase(it);
         }
     }
 }
@@ -246,22 +256,12 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
     }
 
     if (method == "getSystemDevices") {
-        try {
-            GetSystemDevicesAsync(std::move(result));
-        }
-        catch (const std::exception& e) {
-            result->Error("getSystemDevices", e.what());
-        }
+        GetSystemDevicesAsync(std::move(result));
         return;
     }
 
     if (method == "getAdapterState") {
-        try {
-            GetAdapterStateAsync(std::move(result));
-        }
-        catch (const std::exception& e) {
-            result->Error("getAdapterState", e.what());
-        }
+        GetAdapterStateAsync(std::move(result));
         return;
     }
 
@@ -281,9 +281,15 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
     if (method == "disconnect") {
         const auto* remote_id_val = std::get_if<std::string>(method_call.arguments());
         if (remote_id_val) {
-            auto it = connected_devices_.find(*remote_id_val);
+            auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+                [&](const auto& pair) { return pair.first == *remote_id_val; });
             if (it != connected_devices_.end()) {
-                it->second.Close();
+                auto device = it->second.as<BluetoothLEDevice>();
+                device.Close();
+                flutter::EncodableMap connection_state;
+                connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(*remote_id_val);
+                connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0);
+                channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
                 connected_devices_.erase(it);
             }
         }

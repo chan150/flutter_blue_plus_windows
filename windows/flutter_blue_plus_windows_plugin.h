@@ -5,10 +5,12 @@
 #include <flutter/plugin_registrar_windows.h>
 #include <winrt/Windows.Devices.Bluetooth.Advertisement.h>
 #include <winrt/Windows.Devices.Bluetooth.h>
+#include <winrt/Windows.Foundation.h>
 
 #include <memory>
-#include <map>
 #include <string>
+#include <vector>
+#include <utility>
 
 namespace flutter_blue_plus_windows {
 
@@ -36,7 +38,8 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   winrt::event_token received_token_{};
   winrt::event_token stopped_token_{};
 
-  std::map<std::string, winrt::Windows::Devices::Bluetooth::BluetoothLEDevice> connected_devices_{};
+  // Using vector of pairs to avoid std::map issues with non-default-constructible WinRT types
+  std::vector<std::pair<std::string, winrt::Windows::Foundation::IInspectable>> connected_devices_{};
 
   void OnAdvertisementReceived(
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher&,
@@ -49,10 +52,12 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   winrt::fire_and_forget ConnectAsync(
       std::string remote_id,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
-      
+
   void OnConnectionStatusChanged(
     const winrt::Windows::Devices::Bluetooth::BluetoothLEDevice&,
     const winrt::Windows::Foundation::IInspectable&);
+
+  std::string uint64_to_mac_string(uint64_t addr);
 };
 
 }  // namespace flutter_blue_plus_windows
