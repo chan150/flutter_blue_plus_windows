@@ -4,8 +4,11 @@
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
 #include <winrt/Windows.Devices.Bluetooth.Advertisement.h>
+#include <winrt/Windows.Devices.Bluetooth.h>
 
 #include <memory>
+#include <map>
+#include <string>
 
 namespace flutter_blue_plus_windows {
 
@@ -33,6 +36,8 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   winrt::event_token received_token_{};
   winrt::event_token stopped_token_{};
 
+  std::map<std::string, winrt::Windows::Devices::Bluetooth::BluetoothLEDevice> connected_devices_{};
+
   void OnAdvertisementReceived(
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher&,
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementReceivedEventArgs&);
@@ -40,6 +45,14 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   void OnAdvertisementStopped(
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher&,
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcherStoppedEventArgs&);
+
+  winrt::fire_and_forget ConnectAsync(
+      std::string remote_id,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+      
+  void OnConnectionStatusChanged(
+    const winrt::Windows::Devices::Bluetooth::BluetoothLEDevice&,
+    const winrt::Windows::Foundation::IInspectable&);
 };
 
 }  // namespace flutter_blue_plus_windows
