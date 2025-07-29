@@ -175,13 +175,49 @@ final class FlutterBluePlusWindows extends FlutterBluePlusPlatform {
   }
 
   @override
-  Future<BmDevicesList> getSystemDevices(
-    BmSystemDevicesRequest request,
+  Future<BmBondStateResponse> getBondState(
+    BmBondStateRequest request,
+  ) async {
+    return BmBondStateResponse.fromMap(
+      await _invokeMethod(
+        'getBondState',
+        request.remoteId.str,
+      ),
+    );
+  }
+
+  @override
+  Future<BmDevicesList> getBondedDevices(
+    BmBondedDevicesRequest request,
   ) async {
     return BmDevicesList.fromMap(
       await _invokeMethod(
+        'getBondedDevices',
+      ),
+    );
+  }
+
+ @override
+  Future<PhySupport> getPhySupport(
+    PhySupportRequest request,
+  ) async {
+    return PhySupport.fromMap(
+      await _invokeMethod(
+        'getPhySupport',
+      ),
+    );
+  }
+
+  @override
+  Future<BmDevicesList> getSystemDevices(
+    BmSystemDevicesRequest request,
+  ) async {
+    // Windows implementation currently takes request.toMap(), platform interface default does not.
+    // Keeping request.toMap() for consistency with existing Windows code.
+    return BmDevicesList.fromMap(
+      await _invokeMethod(
         'getSystemDevices',
-        request.toMap(),
+        request.toMap(), 
       ),
     );
   }
@@ -226,6 +262,36 @@ final class FlutterBluePlusWindows extends FlutterBluePlusPlatform {
   }
 
   @override
+  Future<bool> removeBond(
+    BmRemoveBondRequest request,
+  ) async {
+    return await _invokeMethod<bool>(
+      'removeBond',
+      request.remoteId.str,
+    ) == true;
+  }
+
+  @override
+  Future<bool> requestConnectionPriority(
+    BmConnectionPriorityRequest request,
+  ) async {
+    return await _invokeMethod<bool>(
+      'requestConnectionPriority',
+      request.toMap(),
+    ) == true;
+  }
+
+  @override
+  Future<bool> requestMtu(
+    BmMtuChangeRequest request,
+  ) async {
+    return await _invokeMethod<bool>(
+      'requestMtu',
+      request.toMap(),
+    ) == true;
+  }
+
+  @override
   Future<bool> setLogLevel(
     BmSetLogLevelRequest request,
   ) async {
@@ -259,6 +325,16 @@ final class FlutterBluePlusWindows extends FlutterBluePlusPlatform {
   }
 
   @override
+  Future<bool> setPreferredPhy(
+    BmPreferredPhy request,
+  ) async {
+    return await _invokeMethod<bool>(
+      'setPreferredPhy',
+      request.toMap(),
+    ) == true;
+  }
+
+  @override
   Future<bool> startScan(
     BmScanSettings request,
   ) async {
@@ -274,6 +350,24 @@ final class FlutterBluePlusWindows extends FlutterBluePlusPlatform {
   ) async {
     return await _invokeMethod<bool>(
       'stopScan',
+    ) == true;
+  }
+
+  @override
+  Future<bool> turnOff(
+    BmTurnOffRequest request,
+  ) async {
+    return await _invokeMethod<bool>(
+      'turnOff',
+    ) == true;
+  }
+
+  @override
+  Future<bool> turnOn(
+    BmTurnOnRequest request,
+  ) async {
+    return await _invokeMethod<bool>(
+      'turnOn',
     ) == true;
   }
 
