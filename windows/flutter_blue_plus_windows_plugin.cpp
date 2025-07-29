@@ -1,7 +1,7 @@
 #include "flutter_blue_plus_windows_plugin.h"
 
 #include <flutter/method_channel.h>
-#include <flutter/plugin_registrar_windows.h>
+#include <flutter/plugin_registrar_windows.hh>
 #include <flutter/standard_method_codec.h>
 #include <Windows.h>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -10,11 +10,13 @@
 #include <winrt/Windows.Devices.Enumeration.h>
 #include <winrt/Windows.Devices.Radios.h>
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Storage.Streams.h>
 
 #include <memory>
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <vector>
 
 using namespace winrt;
 using namespace Windows::Foundation;
@@ -52,6 +54,20 @@ uint64_t mac_to_uint64(const std::string& mac_address) {
     }
     return result;
 }
+
+std::vector<uint8_t> to_vector(const winrt::Windows::Storage::Streams::IBuffer& buffer) {
+    auto reader = winrt::Windows::Storage::Streams::DataReader::FromBuffer(buffer);
+    std::vector<uint8_t> data(reader.UnconsumedBufferLength());
+    if (!data.empty()) {
+        reader.ReadBytes(data);
+    }
+    return data;
+}
+
+std::string to_uuid_string(const winrt::guid& uuid) {
+    return winrt::to_string(winrt::to_hstring(uuid));
+}
+
 }  // namespace utils
 
 void FlutterBluePlusWindowsPlugin::RegisterWithRegistrar(
@@ -93,13 +109,78 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
         flutter::EncodableMap map;
         map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
 
-        if (!args.Advertisement().LocalName().empty()) {
+        auto advertisement = args.Advertisement();
+
+        // adv_name
+        if (!advertisement.LocalName().empty()) {
+            map[flutter::EncodableValue("adv_name")] =
+                flutter::EncodableValue(utils::to_string(advertisement.LocalName()));
             map[flutter::EncodableValue("platform_name")] =
-                flutter::EncodableValue(utils::to_string(args.Advertisement().LocalName()));
+                flutter::EncodableValue(utils::to_string(advertisement.LocalName()));
         }
 
         map[flutter::EncodableValue("rssi")] =
             flutter::EncodableValue(static_cast<int32_t>(args.RawSignalStrengthInDBm()));
+
+        // connectable
+        auto adType = args.AdvertisementType();
+        bool connectable = (adType == BluetoothLEAdvertisementType::ConnectableUndirected) ||
+                           (adType == BluetoothLEAdvertisementType::ConnectableDirected);
+        map[flutter::EncodableValue("connectable")] = flutter::EncodableValue(connectable);
+
+        // tx_power_level
+        if (args.TransmitPowerLevelInDBm() != nullptr) {
+            map[flutter::EncodableValue("tx_power_level")] =
+                flutter::EncodableValue(static_cast<int32_t>(args.TransmitPowerLevelInDBm().Value()));
+        }
+
+        // appearance
+        for (const auto& section : advertisement.DataSections()) {
+            if (section.DataType() == 0x19) { // Appearance
+                auto reader = winrt::Windows::Storage::Streams::DataReader::FromBuffer(section.Data());
+                uint16_t appearance_value;
+                reader.ReadUInt16(appearance_value);
+                map[flutter::EncodableValue("appearance")] = flutter::EncodableValue(static_cast<int32_t>(appearance_value));
+                break;
+            }
+        }
+
+        // manufacturer_data
+        if (advertisement.ManufacturerData().Size() > 0) {
+            flutter::EncodableMap msd_map;
+            for (const auto& msd : advertisement.ManufacturerData()) {
+                msd_map[flutter::EncodableValue(static_cast<int64_t>(msd.CompanyId()))] = 
+                    flutter::EncodableValue(utils::to_vector(msd.Data()));
+            }
+            map[flutter::EncodableValue("manufacturer_data")] = msd_map;
+        }
+
+        // service_data
+        flutter::EncodableMap service_data_map;
+        for (const auto& section : advertisement.GetSectionsByType(0x16)) {
+             auto buffer = section.Data();
+             if (buffer.Length() >= 2) {
+                 auto all_data = utils::to_vector(buffer);
+                 uint16_t uuid16 = (all_data[1] << 8) | all_data[0];
+                 std::stringstream ss;
+                 ss << std::hex << std::setfill('0') << std::setw(4) << uuid16;
+                 std::string uuid_str = "0000" + ss.str() + "-0000-1000-8000-00805f9b34fb";
+                 std::vector<uint8_t> data_vec(all_data.begin() + 2, all_data.end());
+                 service_data_map[flutter::EncodableValue(uuid_str)] = flutter::EncodableValue(data_vec);
+             }
+        }
+        if (!service_data_map.empty()) {
+            map[flutter::EncodableValue("service_data")] = service_data_map;
+        }
+
+        // service_uuids
+        if (advertisement.ServiceUuids().Size() > 0) {
+            flutter::EncodableList service_uuids_list;
+            for (const auto& uuid : advertisement.ServiceUuids()) {
+                 service_uuids_list.push_back(flutter::EncodableValue(utils::to_uuid_string(uuid)));
+            }
+            map[flutter::EncodableValue("service_uuids")] = service_uuids_list;
+        }
 
         flutter::EncodableMap response;
         response[flutter::EncodableValue("advertisements")] = flutter::EncodableList{ flutter::EncodableValue(map) };
