@@ -59,6 +59,11 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
       std::string remote_id,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
+  // Added DiscoverServicesAsync declaration
+  winrt::fire_and_forget DiscoverServicesAsync(
+      std::string remote_id,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
   void OnConnectionStatusChanged(
     const winrt::Windows::Devices::Bluetooth::BluetoothLEDevice&,
     const winrt::Windows::Foundation::IInspectable&);
