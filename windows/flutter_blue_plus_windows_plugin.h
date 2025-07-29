@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <map>
 
 namespace flutter_blue_plus_windows {
 
@@ -40,6 +41,8 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
 
   // Using vector of pairs to avoid std::map issues with non-default-constructible WinRT types
   std::vector<std::pair<std::string, winrt::Windows::Foundation::IInspectable>> connected_devices_{};
+  std::vector<std::pair<std::string, winrt::Windows::Foundation::IInspectable>> currently_connecting_devices_{};
+  std::map<std::string, int32_t> rssi_cache_{};
 
   void OnAdvertisementReceived(
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher&,

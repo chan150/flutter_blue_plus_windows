@@ -7,6 +7,7 @@
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Devices.Bluetooth.h>
 #include <winrt/Windows.Devices.Bluetooth.Advertisement.h>
+#include <winrt/Windows.Devices.Bluetooth.GenericAttributeProfile.h>
 #include <winrt/Windows.Devices.Enumeration.h>
 #include <winrt/Windows.Devices.Radios.h>
 #include <winrt/Windows.Foundation.h>
@@ -23,6 +24,7 @@ using namespace Windows::Foundation;
 using namespace Windows::Foundation::Collections;
 using namespace Windows::Devices::Bluetooth;
 using namespace Windows::Devices::Bluetooth::Advertisement;
+using namespace Windows::Devices::Bluetooth::GenericAttributeProfile;
 using namespace Windows::Devices::Enumeration;
 using namespace Windows::Devices::Radios;
 
@@ -105,6 +107,8 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
     const BluetoothLEAdvertisementReceivedEventArgs& args) {
     if (channel_) {
         std::string remote_id = uint64_to_mac_string(args.BluetoothAddress());
+        
+        rssi_cache_[remote_id] = static_cast<int32_t>(args.RawSignalStrengthInDBm());
 
         flutter::EncodableMap map;
         map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
@@ -283,18 +287,30 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
         auto device = co_await BluetoothLEDevice::FromBluetoothAddressAsync(bluetoothAddress);
 
         if (device) {
-            auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+            auto it = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
                 [&](const auto& pair) { return pair.first == remote_id; });
-            if (it != connected_devices_.end()) {
-                it->second = device;
-            } else {
-                connected_devices_.emplace_back(remote_id, device);
+            if (it == currently_connecting_devices_.end()) {
+                 currently_connecting_devices_.emplace_back(remote_id, device);
             }
+
             device.ConnectionStatusChanged({ this, &FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged });
-            result->Success(flutter::EncodableValue(true));
+            
+            // Trigger connection by getting GATT services
+            auto gatt_result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Uncached);
+            
+            if (gatt_result.Status() == GattCommunicationStatus::Success) {
+                // ConnectionStatusChanged will handle moving to connected_devices_
+                 result->Success(flutter::EncodableValue(true));
+            } else {
+                 currently_connecting_devices_.erase(
+                    std::remove_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
+                        [&](const auto& pair) { return pair.first == remote_id; }),
+                    currently_connecting_devices_.end());
+                result->Error("connect", "Failed to connect: " + std::to_string((int)gatt_result.Status()));
+            }
         }
         else {
-            result->Error("connect", "Failed to connect to device.");
+            result->Error("connect", "Device not found.");
         }
     }
     catch (const hresult_error& e) {
@@ -318,17 +334,35 @@ std::string FlutterBluePlusWindowsPlugin::uint64_to_mac_string(uint64_t addr) {
 void FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged(
     const BluetoothLEDevice& device,
     const IInspectable&) {
-    if (device.ConnectionStatus() == BluetoothConnectionStatus::Disconnected) {
-        std::string remote_id = uint64_to_mac_string(device.BluetoothAddress());
-        auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+    
+    std::string remote_id = uint64_to_mac_string(device.BluetoothAddress());
+    flutter::EncodableMap connection_state;
+    connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+
+    if (device.ConnectionStatus() == BluetoothConnectionStatus::Connected) {
+
+        auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
             [&](const auto& pair) { return pair.first == remote_id; });
-        if (it != connected_devices_.end()) {
-            flutter::EncodableMap connection_state;
-            connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-            connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); // disconnected
-            channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
-            connected_devices_.erase(it);
+
+        if(it_connecting != currently_connecting_devices_.end()) {
+             connected_devices_.emplace_back(remote_id, device);
+             currently_connecting_devices_.erase(it_connecting);
         }
+        
+        connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1); // connected
+        channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
+
+    } else if (device.ConnectionStatus() == BluetoothConnectionStatus::Disconnected) {
+       
+        auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+            [&](const auto& pair) { return pair.first == remote_id; });
+
+        if (it_connected != connected_devices_.end()) {
+            connected_devices_.erase(it_connected);
+        }
+
+        connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); // disconnected
+        channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
     }
 }
 
@@ -336,6 +370,27 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
     const auto& method = method_call.method_name();
+
+    if (method == "flutterRestart") {
+        watcher_.Stop();
+
+        int count = static_cast<int>(connected_devices_.size());
+
+        for (const auto& pair : connected_devices_) {
+            auto device = pair.second.as<BluetoothLEDevice>();
+            if (device) {
+                device.Close();
+            }
+        }
+        result->Success(flutter::EncodableValue(count));
+        return;
+    }
+
+    if (method == "setLogLevel") {
+        // Logging is not implemented in the Windows plugin, but we need to handle the call
+        result->Success(flutter::EncodableValue(true));
+        return;
+    }
 
     if (method == "startScan") {
         watcher_.Start();
@@ -379,11 +434,7 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
                 [&](const auto& pair) { return pair.first == *remote_id_val; });
             if (it != connected_devices_.end()) {
                 auto device = it->second.as<BluetoothLEDevice>();
-                device.Close();
-                flutter::EncodableMap connection_state;
-                connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(*remote_id_val);
-                connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0);
-                channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
+                device.Close(); // This will trigger OnConnectionStatusChanged
                 connected_devices_.erase(it);
             }
         }
@@ -391,8 +442,23 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
         return;
     }
 
+    if (method == "readRssi") {
+        const auto* remote_id_val = std::get_if<std::string>(method_call.arguments());
+        if (remote_id_val) {
+            auto it = rssi_cache_.find(*remote_id_val);
+            if (it != rssi_cache_.end()) {
+                flutter::EncodableMap rssi_result;
+                rssi_result[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(*remote_id_val);
+                rssi_result[flutter::EncodableValue("rssi")] = flutter::EncodableValue(it->second);
+                channel_->InvokeMethod("OnReadRssi", std::make_unique<flutter::EncodableValue>(rssi_result));
+            }
+        }
+        result->Success(flutter::EncodableValue(true));
+        return;
+    }
+
     if (method == "connectedCount") {
-        result->Success(static_cast<int>(connected_devices_.size()));
+        result->Success(flutter::EncodableValue(static_cast<int>(connected_devices_.size())));
         return;
     }
 
