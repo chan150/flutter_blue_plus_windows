@@ -435,7 +435,6 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
             if (it != connected_devices_.end()) {
                 auto device = it->second.as<BluetoothLEDevice>();
                 device.Close(); // This will trigger OnConnectionStatusChanged
-                connected_devices_.erase(it);
             }
         }
         result->Success(flutter::EncodableValue(true));
