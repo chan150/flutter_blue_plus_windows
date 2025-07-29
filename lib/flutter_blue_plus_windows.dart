@@ -26,7 +26,6 @@ final class FlutterBluePlusWindows extends FlutterBluePlusPlatform {
   final _onReadRssiController = StreamController<BmReadRssiResult>.broadcast();
   final _onScanResponseController = StreamController<BmScanResponse>.broadcast();
   final _onServicesResetController = StreamController<BmBluetoothDevice>.broadcast();
-  final _onTurnOnResponseController = StreamController<BmTurnOnResponse>.broadcast();
   final _onDetachedFromEngineController = StreamController<BmDetachedFromEngineResponse>.broadcast();
 
   @override
@@ -92,11 +91,6 @@ final class FlutterBluePlusWindows extends FlutterBluePlusPlatform {
   @override
   Stream<BmBluetoothDevice> get onServicesReset {
     return _onServicesResetController.stream;
-  }
-
-  @override
-  Stream<BmTurnOnResponse> get onTurnOnResponse {
-    return _onTurnOnResponseController.stream;
   }
 
   @override
@@ -449,12 +443,6 @@ final class FlutterBluePlusWindows extends FlutterBluePlusPlatform {
       case 'OnServicesReset':
         return _onServicesResetController.add(
           BmBluetoothDevice.fromMap(
-            call.arguments,
-          ),
-        );
-      case 'OnTurnOnResponse':
-        return _onTurnOnResponseController.add(
-          BmTurnOnResponse.fromMap(
             call.arguments,
           ),
         );
