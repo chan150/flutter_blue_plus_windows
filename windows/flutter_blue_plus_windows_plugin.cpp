@@ -1,7 +1,7 @@
 #include "flutter_blue_plus_windows_plugin.h"
 
 #include <flutter/method_channel.h>
-#include <flutter/plugin_registrar_windows.hh>
+#include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
 #include <Windows.h>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -139,7 +139,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
             if (section.DataType() == 0x19) { // Appearance
                 auto reader = winrt::Windows::Storage::Streams::DataReader::FromBuffer(section.Data());
                 uint16_t appearance_value;
-                reader.ReadUInt16(appearance_value);
+                appearance_value = reader.ReadUInt16();
                 map[flutter::EncodableValue("appearance")] = flutter::EncodableValue(static_cast<int32_t>(appearance_value));
                 break;
             }
