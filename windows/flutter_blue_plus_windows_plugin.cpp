@@ -161,6 +161,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
         for (const auto& section : advertisement.DataSections()) {
             if (section.DataType() == 0x19) { // Appearance
                 auto reader = winrt::Windows::Storage::Streams::DataReader::FromBuffer(section.Data());
+                reader.ByteOrder(winrt::Windows::Storage::Streams::ByteOrder::LittleEndian); // Set to Little Endian
                 uint16_t appearance_value;
                 appearance_value = reader.ReadUInt16();
                 map[flutter::EncodableValue("appearance")] = flutter::EncodableValue(static_cast<int32_t>(appearance_value));
