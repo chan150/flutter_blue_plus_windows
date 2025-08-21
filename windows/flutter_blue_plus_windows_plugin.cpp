@@ -67,7 +67,29 @@ std::vector<uint8_t> to_vector(const winrt::Windows::Storage::Streams::IBuffer& 
 }
 
 std::string to_uuid_string(const winrt::guid& uuid) {
-    return winrt::to_string(winrt::to_hstring(uuid));
+    std::string uuid_str_with_braces = winrt::to_string(winrt::to_hstring(uuid));
+    std::string full_uuid;
+
+    // Remove curly braces if present
+    if (uuid_str_with_braces.length() >= 2 && uuid_str_with_braces.front() == '{' && uuid_str_with_braces.back() == '}') {
+        full_uuid = uuid_str_with_braces.substr(1, uuid_str_with_braces.length() - 2);
+    } else {
+        full_uuid = uuid_str_with_braces;
+    }
+
+    // Ensure lowercase for consistent comparison and output
+    std::transform(full_uuid.begin(), full_uuid.end(), full_uuid.begin(),
+                   [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
+
+    // Check for standard 16-bit UUID pattern: 0000xxxx-0000-1000-8000-00805f9b34fb
+    // Note: The length check should now be for 36 characters (without braces)
+    if (full_uuid.length() == 36 &&
+        full_uuid.substr(0, 4) == "0000" &&
+        full_uuid.substr(8) == "-0000-1000-8000-00805f9b34fb") {
+        return full_uuid.substr(4, 4); // Return short form like "180d"
+    }
+    // For other UUIDs, return the full 128-bit version
+    return full_uuid;
 }
 
 }  // namespace utils
@@ -125,9 +147,9 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
 
         // connectable
         auto adType = args.AdvertisementType();
-        bool connectable = (adType == BluetoothLEAdvertisementType::ConnectableUndirected) ||
-                           (adType == BluetoothLEAdvertisementType::ConnectableDirected);
-        map[flutter::EncodableValue("connectable")] = flutter::EncodableValue(connectable);
+        bool connectable_bool = (adType == BluetoothLEAdvertisementType::ConnectableUndirected) ||
+                                (adType == BluetoothLEAdvertisementType::ConnectableDirected);
+        map[flutter::EncodableValue("connectable")] = flutter::EncodableValue(connectable_bool ? 1 : 0);
 
         // tx_power_level
         if (args.TransmitPowerLevelInDBm() != nullptr) {
