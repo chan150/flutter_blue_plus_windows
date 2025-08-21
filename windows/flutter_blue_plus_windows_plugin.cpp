@@ -115,13 +115,10 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
 
         auto advertisement = args.Advertisement();
 
-        // adv_name
-        if (!advertisement.LocalName().empty()) {
-            map[flutter::EncodableValue("adv_name")] =
-                flutter::EncodableValue(utils::to_string(advertisement.LocalName()));
-            map[flutter::EncodableValue("platform_name")] =
-                flutter::EncodableValue(utils::to_string(advertisement.LocalName()));
-        }
+        // adv_name & platform_name
+        std::string localNameStr = utils::to_string(advertisement.LocalName());
+        map[flutter::EncodableValue("adv_name")] = flutter::EncodableValue(localNameStr);
+        map[flutter::EncodableValue("platform_name")] = flutter::EncodableValue(localNameStr);
 
         map[flutter::EncodableValue("rssi")] =
             flutter::EncodableValue(static_cast<int32_t>(args.RawSignalStrengthInDBm()));
