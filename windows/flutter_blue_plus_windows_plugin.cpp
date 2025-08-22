@@ -388,9 +388,19 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
     std::string remote_id,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
     try {
+        OutputDebugStringW(L"[FBP] DiscoverServicesAsync called for remote_id: ");
+        OutputDebugStringW(winrt::to_hstring(remote_id).c_str());
+        OutputDebugStringW(L"\n[FBP] Current connected_devices_ list:\n");
+        for (const auto& pair : connected_devices_) {
+            OutputDebugStringW(L"  - Device: ");
+            OutputDebugStringW(winrt::to_hstring(pair.first).c_str());
+            OutputDebugStringW(L"\n");
+        }
+
         auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
             [&](const auto& pair) { return pair.first == remote_id; });
         if (it == connected_devices_.end()) {
+            OutputDebugStringW(L"[FBP] Device not found in connected_devices_ for discoverServices.\n");
             result->Error("discoverServices", "Device not found");
             co_return;
         }
@@ -456,6 +466,12 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
         response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
         response[flutter::EncodableValue("services")] = services_list;
         response[flutter::EncodableValue("success")] = flutter::EncodableValue(true);
+        
+        // Log the remote_id being sent in OnDiscoveredServices
+        OutputDebugStringW(L"[FBP] Sending OnDiscoveredServices for remote_id: ");
+        OutputDebugStringW(winrt::to_hstring(remote_id).c_str());
+        OutputDebugStringW(L"\n");
+
         channel_->InvokeMethod("OnDiscoveredServices", std::make_unique<flutter::EncodableValue>(response));
 
         result->Success(flutter::EncodableValue(true));
@@ -465,7 +481,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
     }
     co_return;
 }
-
 
 void FlutterBluePlusWindowsPlugin::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
@@ -480,9 +495,14 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
         for (const auto& pair : connected_devices_) {
             auto device = pair.second.as<BluetoothLEDevice>();
             if (device) {
-                device.Close();
+                device.Close(); // This should trigger OnConnectionStatusChanged and clear the device
             }
         }
+        // Clearing maps explicitly as well, as Close() might be asynchronous or not always trigger cleanup immediately
+        connected_devices_.clear();
+        currently_connecting_devices_.clear();
+        rssi_cache_.clear();
+
         result->Success(flutter::EncodableValue(count));
         return;
     }
@@ -529,36 +549,58 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
     }
 
     if (method == "disconnect") {
-        const auto* remote_id_val = std::get_if<std::string>(method_call.arguments());
-        if (remote_id_val) {
+        const auto* remote_id_val_ptr = std::get_if<std::string>(method_call.arguments());
+        if (remote_id_val_ptr) {
+            std::string remote_id = *remote_id_val_ptr;
             auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
-                [&](const auto& pair) { return pair.first == *remote_id_val; });
+                [&](const auto& pair) { return pair.first == remote_id; });
             if (it != connected_devices_.end()) {
                 auto device = it->second.as<BluetoothLEDevice>();
-                device.Close(); // This will trigger OnConnectionStatusChanged
+                if (device) {
+                     device.Close(); // This will trigger OnConnectionStatusChanged which removes from connected_devices_
+                }
+            } else {
+                 // Also check currently_connecting_devices_ if not found in connected_devices_
+                 auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
+                    [&](const auto& pair) { return pair.first == remote_id; });
+                 if (it_connecting != currently_connecting_devices_.end()) {
+                    auto device_connecting = it_connecting->second.as<BluetoothLEDevice>();
+                    if (device_connecting) {
+                        device_connecting.Close(); // This should trigger OnConnectionStatusChanged and remove it
+                    }
+                 }
             }
         }
         result->Success(flutter::EncodableValue(true));
         return;
     }
-
-    if (method == "readRssi") {
-        const auto* remote_id_val = std::get_if<std::string>(method_call.arguments());
-        if (remote_id_val) {
-            auto it = rssi_cache_.find(*remote_id_val);
-            if (it != rssi_cache_.end()) {
-                flutter::EncodableMap rssi_result;
-                rssi_result[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(*remote_id_val);
-                rssi_result[flutter::EncodableValue("rssi")] = flutter::EncodableValue(it->second);
-                channel_->InvokeMethod("OnReadRssi", std::make_unique<flutter::EncodableValue>(rssi_result));
-                 result->Success(flutter::EncodableValue(true));
-            } else {
-                 result->Error("readRssi", "RSSI not available");
-            }
-        } else {
-            result->Error("readRssi", "Invalid arguments");
+    
+    if (method_call.method_name() == "readRssi") { 
+        const auto* remote_id_arg = std::get_if<std::string>(method_call.arguments());
+        if (!remote_id_arg) {
+            result->Error("InvalidArgument", "Expected a string remote_id argument.");
+            return; 
         }
-        return;
+        const std::string remote_id = *remote_id_arg;
+
+        flutter::EncodableMap rssi_update;
+        rssi_update[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+
+        auto rssi_it = rssi_cache_.find(remote_id);
+        if (rssi_it != rssi_cache_.end()) {
+            rssi_update[flutter::EncodableValue("rssi")] = flutter::EncodableValue(static_cast<int32_t>(rssi_it->second));
+            rssi_update[flutter::EncodableValue("success")] = flutter::EncodableValue(true);
+            rssi_update[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0); 
+            rssi_update[flutter::EncodableValue("error_string")] = flutter::EncodableValue(""); 
+        } else {
+            rssi_update[flutter::EncodableValue("rssi")] = flutter::EncodableValue(0); 
+            rssi_update[flutter::EncodableValue("success")] = flutter::EncodableValue(false);
+            rssi_update[flutter::EncodableValue("error_code")] = flutter::EncodableValue(1); 
+            rssi_update[flutter::EncodableValue("error_string")] = flutter::EncodableValue("RSSI not available in cache.");
+        }
+        channel_->InvokeMethod("OnReadRssi", std::make_unique<flutter::EncodableValue>(rssi_update));
+        result->Success(flutter::EncodableValue(true));
+        return; 
     }
 
     if (method == "discoverServices") {
@@ -568,13 +610,14 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
         } else {
             result->Error("discoverServices", "Invalid arguments");
         }
-        return;
     }
 
     if (method == "connectedCount") {
         result->Success(flutter::EncodableValue(static_cast<int>(connected_devices_.size())));
         return;
     }
+
+    // TODO: Implement other methods like requestMtu, readCharacteristic, writeCharacteristic, etc.
 
     if (method == "turnOn") {
         result->Success(flutter::EncodableValue(false));
