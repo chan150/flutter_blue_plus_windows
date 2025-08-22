@@ -127,6 +127,7 @@ FlutterBluePlusWindowsPlugin::~FlutterBluePlusWindowsPlugin() {
 void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
     const BluetoothLEAdvertisementWatcher&,
     const BluetoothLEAdvertisementReceivedEventArgs& args) {
+    if (args.IsScanResponse()) return;
     if (channel_) {
         std::string remote_id = uint64_to_mac_string(args.BluetoothAddress());
         
@@ -146,10 +147,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
             flutter::EncodableValue(static_cast<int32_t>(args.RawSignalStrengthInDBm()));
 
         // connectable
-        auto adType = args.AdvertisementType();
-        bool connectable_bool = (adType == BluetoothLEAdvertisementType::ConnectableUndirected) ||
-                                (adType == BluetoothLEAdvertisementType::ConnectableDirected);
-        map[flutter::EncodableValue("connectable")] = flutter::EncodableValue(connectable_bool ? 1 : 0);
+        map[flutter::EncodableValue("connectable")] = flutter::EncodableValue(args.IsConnectable() ? 1 : 0);
 
         // tx_power_level
         if (args.TransmitPowerLevelInDBm() != nullptr) {
