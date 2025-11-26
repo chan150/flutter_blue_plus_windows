@@ -127,35 +127,40 @@ FlutterBluePlusWindowsPlugin::~FlutterBluePlusWindowsPlugin() {
 void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
     const BluetoothLEAdvertisementWatcher&,
     const BluetoothLEAdvertisementReceivedEventArgs& args) {
-    if (args.IsScanResponse()) return;
+    // if (args.IsScanResponse()) return;
     if (channel_) {
         std::string remote_id = uint64_to_mac_string(args.BluetoothAddress());
         
         rssi_cache_[remote_id] = static_cast<int32_t>(args.RawSignalStrengthInDBm());
 
-        flutter::EncodableMap map;
+        // Ensure entry exists in cache
+        if (scan_results_cache_.find(remote_id) == scan_results_cache_.end()) {
+             scan_results_cache_[remote_id] = flutter::EncodableMap();
+        }
+        auto& map = scan_results_cache_[remote_id];
+
+        // Always update these fields
         map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+        map[flutter::EncodableValue("rssi")] =
+            flutter::EncodableValue(static_cast<int32_t>(args.RawSignalStrengthInDBm()));
+        map[flutter::EncodableValue("connectable")] = flutter::EncodableValue(args.IsConnectable() ? 1 : 0);
 
         auto advertisement = args.Advertisement();
 
-        // adv_name & platform_name
+        // adv_name & platform_name (Merge if not empty)
         std::string localNameStr = utils::to_string(advertisement.LocalName());
-        map[flutter::EncodableValue("adv_name")] = flutter::EncodableValue(localNameStr);
-        map[flutter::EncodableValue("platform_name")] = flutter::EncodableValue(localNameStr);
+        if (!localNameStr.empty()) {
+            map[flutter::EncodableValue("adv_name")] = flutter::EncodableValue(localNameStr);
+            map[flutter::EncodableValue("platform_name")] = flutter::EncodableValue(localNameStr);
+        }
 
-        map[flutter::EncodableValue("rssi")] =
-            flutter::EncodableValue(static_cast<int32_t>(args.RawSignalStrengthInDBm()));
-
-        // connectable
-        map[flutter::EncodableValue("connectable")] = flutter::EncodableValue(args.IsConnectable() ? 1 : 0);
-
-        // tx_power_level
+        // tx_power_level (Update if present)
         if (args.TransmitPowerLevelInDBm() != nullptr) {
             map[flutter::EncodableValue("tx_power_level")] =
                 flutter::EncodableValue(static_cast<int32_t>(args.TransmitPowerLevelInDBm().Value()));
         }
 
-        // appearance
+        // appearance (Update if present)
         for (const auto& section : advertisement.DataSections()) {
             if (section.DataType() == 0x19) { // Appearance
                 auto reader = winrt::Windows::Storage::Streams::DataReader::FromBuffer(section.Data());
@@ -167,9 +172,18 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
             }
         }
 
-        // manufacturer_data
+        // manufacturer_data (Merge)
         if (advertisement.ManufacturerData().Size() > 0) {
             flutter::EncodableMap msd_map;
+            
+            // Retrieve existing map if it exists
+            auto it = map.find(flutter::EncodableValue("manufacturer_data"));
+            if (it != map.end()) {
+                if (auto* existing = std::get_if<flutter::EncodableMap>(&it->second)) {
+                    msd_map = *existing;
+                }
+            }
+
             for (const auto& msd : advertisement.ManufacturerData()) {
                 msd_map[flutter::EncodableValue(static_cast<int64_t>(msd.CompanyId()))] = 
                     flutter::EncodableValue(utils::to_vector(msd.Data()));
@@ -177,11 +191,21 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
             map[flutter::EncodableValue("manufacturer_data")] = msd_map;
         }
 
-        // service_data
+        // service_data (Merge)
         flutter::EncodableMap service_data_map;
+        // Retrieve existing map if it exists
+        auto it_sd = map.find(flutter::EncodableValue("service_data"));
+        if (it_sd != map.end()) {
+            if (auto* existing = std::get_if<flutter::EncodableMap>(&it_sd->second)) {
+                service_data_map = *existing;
+            }
+        }
+
+        bool has_new_service_data = false;
         for (const auto& section : advertisement.GetSectionsByType(0x16)) {
              auto buffer = section.Data();
              if (buffer.Length() >= 2) {
+                 has_new_service_data = true;
                  auto all_data = utils::to_vector(buffer);
                  uint16_t uuid16 = (all_data[1] << 8) | all_data[0];
                  std::stringstream ss;
@@ -191,15 +215,35 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
                  service_data_map[flutter::EncodableValue(uuid_str)] = flutter::EncodableValue(data_vec);
              }
         }
-        if (!service_data_map.empty()) {
+        if (has_new_service_data || !service_data_map.empty()) {
             map[flutter::EncodableValue("service_data")] = service_data_map;
         }
 
-        // service_uuids
+        // service_uuids (Merge)
         if (advertisement.ServiceUuids().Size() > 0) {
             flutter::EncodableList service_uuids_list;
+             // Retrieve existing list if it exists
+            auto it_u = map.find(flutter::EncodableValue("service_uuids"));
+            if (it_u != map.end()) {
+                if (auto* existing = std::get_if<flutter::EncodableList>(&it_u->second)) {
+                    service_uuids_list = *existing;
+                }
+            }
+
             for (const auto& uuid : advertisement.ServiceUuids()) {
-                 service_uuids_list.push_back(flutter::EncodableValue(utils::to_uuid_string(uuid)));
+                 std::string uuid_str = utils::to_uuid_string(uuid);
+                 bool found = false;
+                 for(const auto& existing_val : service_uuids_list) {
+                     if (auto* s = std::get_if<std::string>(&existing_val)) {
+                         if (*s == uuid_str) {
+                             found = true;
+                             break;
+                         }
+                     }
+                 }
+                 if (!found) {
+                     service_uuids_list.push_back(flutter::EncodableValue(uuid_str));
+                 }
             }
             map[flutter::EncodableValue("service_uuids")] = service_uuids_list;
         }
@@ -502,6 +546,7 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
         connected_devices_.clear();
         currently_connecting_devices_.clear();
         rssi_cache_.clear();
+        scan_results_cache_.clear();
 
         result->Success(flutter::EncodableValue(count));
         return;
@@ -514,6 +559,7 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
     }
 
     if (method == "startScan") {
+        scan_results_cache_.clear();
         watcher_.Start();
         result->Success(flutter::EncodableValue(true));
         return;
