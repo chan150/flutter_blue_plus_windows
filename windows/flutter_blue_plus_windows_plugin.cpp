@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <vector>
+#include <exception>
 
 using namespace winrt;
 using namespace Windows::Foundation;
@@ -315,6 +316,9 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetSystemDevicesAsync(std::
     catch (const std::exception& e) {
         result->Error("getSystemDevices", e.what());
     }
+    catch (...) {
+        result->Error("getSystemDevices", "Unknown error occurred");
+    }
     co_return;
 }
 
@@ -349,6 +353,9 @@ fire_and_forget GetAdapterStateAsync(std::unique_ptr<flutter::MethodResult<flutt
     }
     catch (const std::exception& e) {
         result->Error("getAdapterState", e.what());
+    }
+    catch (...) {
+        result->Error("getAdapterState", "Unknown error occurred");
     }
     co_return;
 }
@@ -389,6 +396,12 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
     }
     catch (const hresult_error& e) {
         result->Error("connect", utils::to_string(e.message()));
+    }
+    catch (const std::exception& e) {
+        result->Error("connect", e.what());
+    }
+    catch (...) {
+        result->Error("connect", "Unknown error occurred");
     }
     co_return;
 }
@@ -534,6 +547,10 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
 
     } catch (const hresult_error& e) {
         result->Error("discoverServices", utils::to_string(e.message()));
+    } catch (const std::exception& e) {
+        result->Error("discoverServices", e.what());
+    } catch (...) {
+        result->Error("discoverServices", "Unknown error occurred");
     }
     co_return;
 }
