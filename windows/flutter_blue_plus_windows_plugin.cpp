@@ -300,10 +300,9 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetSystemDevicesAsync(std::
 
                 std::string remote_id = uint64_to_mac_string(bleDevice.BluetoothAddress());
 
-                auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
-                    [&](const auto& pair) { return pair.first == remote_id; });
-
-                bool is_connected = (it != connected_devices_.end());
+                // Check actual system connection status
+                bool is_connected = (bleDevice.ConnectionStatus() == BluetoothConnectionStatus::Connected);
+                // Also could check internal list, but system status is more accurate for "GetSystemDevices"
 
                 flutter::EncodableMap deviceMap = {};
                 deviceMap[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
@@ -508,7 +507,6 @@ void FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged(
                   }
              }
             
-            // Only invoke if needed, but safe to invoke multiple times (Dart side dedups usually)
             connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1); // connected
             channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
 
@@ -532,94 +530,111 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
     
     std::string error_msg;
-    
+    auto ui_ctx = ui_thread_; // Capture for safe return
+
     try {
         OutputDebugStringW(L"[FBP] DiscoverServicesAsync called for remote_id: ");
         OutputDebugStringW(winrt::to_hstring(remote_id).c_str());
         OutputDebugStringW(L"\n");
 
-        auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
-            [&](const auto& pair) { return pair.first == remote_id; });
-        if (it == connected_devices_.end()) {
-            error_msg = "Device not found";
-            // Jump to end
-        } 
-        else {
-            auto device = it->second.as<BluetoothLEDevice>();
-            
-            // Check connection status first
-            if (device.ConnectionStatus() != BluetoothConnectionStatus::Connected) {
-                error_msg = "Device is not connected";
-            } 
-            else {
-                // Use Cached mode to prevent connection drops on some devices
-                auto gatt_result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Cached);
-
-                if (gatt_result.Status() != GattCommunicationStatus::Success) {
-                    error_msg = "Failed to discover services: " + std::to_string((int)gatt_result.Status());
-                } else {
-                    flutter::EncodableList services_list;
-                    for (const auto& service : gatt_result.Services()) {
-                        flutter::EncodableMap service_map;
-                        service_map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-                        service_map[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(utils::to_uuid_string(service.Uuid()));
-                        
-                        auto char_result = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Cached);
-                        if (char_result.Status() == GattCommunicationStatus::Success) {
-                            flutter::EncodableList characteristics_list;
-                            for (const auto& characteristic : char_result.Characteristics()) {
-                                flutter::EncodableMap characteristic_map;
-                                characteristic_map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-                                characteristic_map[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(utils::to_uuid_string(service.Uuid()));
-                                characteristic_map[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(utils::to_uuid_string(characteristic.Uuid()));
-                                
-                                auto props = characteristic.CharacteristicProperties();
-                                flutter::EncodableMap properties_map;
-                                properties_map[flutter::EncodableValue("broadcast")] = flutter::EncodableValue((props & GattCharacteristicProperties::Broadcast) != GattCharacteristicProperties::None);
-                                properties_map[flutter::EncodableValue("read")] = flutter::EncodableValue((props & GattCharacteristicProperties::Read) != GattCharacteristicProperties::None);
-                                properties_map[flutter::EncodableValue("write_without_response")] = flutter::EncodableValue((props & GattCharacteristicProperties::WriteWithoutResponse) != GattCharacteristicProperties::None);
-                                properties_map[flutter::EncodableValue("write")] = flutter::EncodableValue((props & GattCharacteristicProperties::Write) != GattCharacteristicProperties::None);
-                                properties_map[flutter::EncodableValue("notify")] = flutter::EncodableValue((props & GattCharacteristicProperties::Notify) != GattCharacteristicProperties::None);
-                                properties_map[flutter::EncodableValue("indicate")] = flutter::EncodableValue((props & GattCharacteristicProperties::Indicate) != GattCharacteristicProperties::None);
-                                properties_map[flutter::EncodableValue("authenticated_signed_writes")] = flutter::EncodableValue((props & GattCharacteristicProperties::AuthenticatedSignedWrites) != GattCharacteristicProperties::None);
-                                properties_map[flutter::EncodableValue("extended_properties")] = flutter::EncodableValue((props & GattCharacteristicProperties::ExtendedProperties) != GattCharacteristicProperties::None);
-                                properties_map[flutter::EncodableValue("notify_encryption_required")] = flutter::EncodableValue(false);
-                                properties_map[flutter::EncodableValue("indicate_encryption_required")] = flutter::EncodableValue(false);
-                                characteristic_map[flutter::EncodableValue("properties")] = properties_map;
-
-                                auto desc_result = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Cached);
-                                if (desc_result.Status() == GattCommunicationStatus::Success) {
-                                    flutter::EncodableList descriptors_list;
-                                    for (const auto& descriptor : desc_result.Descriptors()) {
-                                         flutter::EncodableMap descriptor_map;
-                                         descriptor_map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-                                         descriptor_map[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(utils::to_uuid_string(service.Uuid()));
-                                         descriptor_map[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(utils::to_uuid_string(characteristic.Uuid()));
-                                         descriptor_map[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(utils::to_uuid_string(descriptor.Uuid()));
-                                         descriptors_list.push_back(descriptor_map);
-                                    }
-                                    characteristic_map[flutter::EncodableValue("descriptors")] = descriptors_list;
-                                }
-                                characteristics_list.push_back(characteristic_map);
-                            }
-                            service_map[flutter::EncodableValue("characteristics")] = characteristics_list;
-                        }
-                        services_list.push_back(service_map);
-                    }
-
-                    flutter::EncodableMap response;
-                    response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-                    response[flutter::EncodableValue("services")] = services_list;
-                    response[flutter::EncodableValue("success")] = flutter::EncodableValue(true);
-                    
-                    // Switch back to UI thread before sending results
-                    co_await ui_thread_;
-
-                    channel_->InvokeMethod("OnDiscoveredServices", std::make_unique<flutter::EncodableValue>(response));
-                    result->Success(flutter::EncodableValue(true));
-                }
+        // Find device in connected list
+        BluetoothLEDevice device = nullptr;
+        {
+            auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+                [&](const auto& pair) { return pair.first == remote_id; });
+            if (it != connected_devices_.end()) {
+                device = it->second.as<BluetoothLEDevice>();
             }
         }
+
+        if (!device) {
+            co_await ui_ctx;
+            result->Error("discoverServices", "Device not found");
+            co_return;
+        }
+
+        if (device.ConnectionStatus() != BluetoothConnectionStatus::Connected) {
+            co_await ui_ctx;
+            result->Error("discoverServices", "Device is not connected");
+            co_return;
+        }
+
+        // Get Services (Cached is safer on Windows to prevent disconnections)
+        auto servicesResult = co_await device.GetGattServicesAsync(BluetoothCacheMode::Cached);
+
+        if (servicesResult.Status() != GattCommunicationStatus::Success) {
+            co_await ui_ctx;
+            result->Error("discoverServices", "Failed to discover services: " + std::to_string((int)servicesResult.Status()));
+            co_return;
+        }
+
+        flutter::EncodableList services_list;
+
+        for (auto service : servicesResult.Services()) {
+            flutter::EncodableMap service_map;
+            std::string service_uuid = utils::to_uuid_string(service.Uuid());
+            service_map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+            service_map[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid);
+            service_map[flutter::EncodableValue("is_primary")] = flutter::EncodableValue(true); // WinRT returns primary services here
+
+            // Characteristics
+            auto charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Cached);
+            flutter::EncodableList chars_list;
+            if (charsResult.Status() == GattCommunicationStatus::Success) {
+                for (auto characteristic : charsResult.Characteristics()) {
+                    flutter::EncodableMap char_map;
+                    std::string char_uuid = utils::to_uuid_string(characteristic.Uuid());
+                    
+                    char_map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+                    char_map[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid);
+                    char_map[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(char_uuid);
+                    
+                    // Properties
+                    auto props = characteristic.CharacteristicProperties();
+                    flutter::EncodableMap props_map;
+                    props_map[flutter::EncodableValue("broadcast")] = flutter::EncodableValue((props & GattCharacteristicProperties::Broadcast) != GattCharacteristicProperties::None);
+                    props_map[flutter::EncodableValue("read")] = flutter::EncodableValue((props & GattCharacteristicProperties::Read) != GattCharacteristicProperties::None);
+                    props_map[flutter::EncodableValue("write_without_response")] = flutter::EncodableValue((props & GattCharacteristicProperties::WriteWithoutResponse) != GattCharacteristicProperties::None);
+                    props_map[flutter::EncodableValue("write")] = flutter::EncodableValue((props & GattCharacteristicProperties::Write) != GattCharacteristicProperties::None);
+                    props_map[flutter::EncodableValue("notify")] = flutter::EncodableValue((props & GattCharacteristicProperties::Notify) != GattCharacteristicProperties::None);
+                    props_map[flutter::EncodableValue("indicate")] = flutter::EncodableValue((props & GattCharacteristicProperties::Indicate) != GattCharacteristicProperties::None);
+                    props_map[flutter::EncodableValue("authenticated_signed_writes")] = flutter::EncodableValue((props & GattCharacteristicProperties::AuthenticatedSignedWrites) != GattCharacteristicProperties::None);
+                    props_map[flutter::EncodableValue("extended_properties")] = flutter::EncodableValue((props & GattCharacteristicProperties::ExtendedProperties) != GattCharacteristicProperties::None);
+                    props_map[flutter::EncodableValue("notify_encryption_required")] = flutter::EncodableValue(false);
+                    props_map[flutter::EncodableValue("indicate_encryption_required")] = flutter::EncodableValue(false);
+                    char_map[flutter::EncodableValue("properties")] = props_map;
+
+                    // Descriptors
+                    auto descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Cached);
+                    flutter::EncodableList desc_list;
+                    if (descResult.Status() == GattCommunicationStatus::Success) {
+                        for (auto descriptor : descResult.Descriptors()) {
+                            flutter::EncodableMap desc_map;
+                            desc_map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+                            desc_map[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid);
+                            desc_map[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(char_uuid);
+                            desc_map[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(utils::to_uuid_string(descriptor.Uuid()));
+                            desc_list.push_back(desc_map);
+                        }
+                    }
+                    char_map[flutter::EncodableValue("descriptors")] = desc_list;
+                    chars_list.push_back(char_map);
+                }
+            }
+            service_map[flutter::EncodableValue("characteristics")] = chars_list;
+            services_list.push_back(service_map);
+        }
+
+        flutter::EncodableMap response;
+        response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+        response[flutter::EncodableValue("services")] = services_list;
+        response[flutter::EncodableValue("success")] = flutter::EncodableValue(true);
+
+        // Switch back to UI thread
+        co_await ui_ctx;
+        
+        channel_->InvokeMethod("OnDiscoveredServices", std::make_unique<flutter::EncodableValue>(response));
+        result->Success(flutter::EncodableValue(true));
 
     } catch (const std::exception& e) {
         error_msg = e.what();
@@ -628,7 +643,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
     }
 
     if (!error_msg.empty()) {
-        co_await ui_thread_;
+        co_await ui_ctx;
         result->Error("discoverServices", error_msg);
     }
 }
