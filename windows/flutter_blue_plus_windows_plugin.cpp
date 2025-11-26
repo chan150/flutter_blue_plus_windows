@@ -221,21 +221,21 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
 
                 bool has_new_service_data = false;
                 for (const auto& section : advertisement.GetSectionsByType(0x16)) {
-                     auto buffer = section.Data();
-                     if (buffer.Length() >= 2) {
-                         has_new_service_data = true;
-                         auto all_data = utils::to_vector(buffer);
-                         uint16_t uuid16 = (all_data[1] << 8) | all_data[0];
-                         std::stringstream ss;
-                         ss << std::hex << std::setfill('0') << std::setw(4) << uuid16;
-                         std::string uuid_str = "0000" + ss.str() + "-0000-1000-8000-00805f9b34fb";
-                         std::vector<uint8_t> data_vec(all_data.begin() + 2, all_data.end());
-                         service_data_map[flutter::EncodableValue(uuid_str)] = flutter::EncodableValue(data_vec);
-                     }
-                }
-                if (has_new_service_data || !service_data_map.empty()) {
-                    map[flutter::EncodableValue("service_data")] = service_data_map;
-                }
+             auto buffer = section.Data();
+             if (buffer.Length() >= 2) {
+                 has_new_service_data = true;
+                 auto all_data = utils::to_vector(buffer);
+                 uint16_t uuid16 = (all_data[1] << 8) | all_data[0];
+                 std::stringstream ss;
+                 ss << std::hex << std::setfill('0') << std::setw(4) << uuid16;
+                 std::string uuid_str = "0000" + ss.str() + "-0000-1000-8000-00805f9b34fb";
+                 std::vector<uint8_t> data_vec(all_data.begin() + 2, all_data.end());
+                 service_data_map[flutter::EncodableValue(uuid_str)] = flutter::EncodableValue(data_vec);
+             }
+        }
+        if (has_new_service_data || !service_data_map.empty()) {
+            map[flutter::EncodableValue("service_data")] = service_data_map;
+        }
 
                 // service_uuids (Merge)
                 if (advertisement.ServiceUuids().Size() > 0) {
@@ -300,10 +300,9 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetSystemDevicesAsync(std::
 
                 std::string remote_id = uint64_to_mac_string(bleDevice.BluetoothAddress());
 
-                auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
-                    [&](const auto& pair) { return pair.first == remote_id; });
-
-                bool is_connected = (it != connected_devices_.end());
+                // Check actual system connection status
+                bool is_connected = (bleDevice.ConnectionStatus() == BluetoothConnectionStatus::Connected);
+                // Also could check internal list, but system status is more accurate for "GetSystemDevices"
 
                 flutter::EncodableMap deviceMap = {};
                 deviceMap[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
@@ -404,8 +403,22 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
             auto gatt_result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Cached);
             
             if (gatt_result.Status() == GattCommunicationStatus::Success) {
-                // ConnectionStatusChanged will handle moving to connected_devices_
                  co_await ui_thread_;
+
+                 // Explicitly update connected_devices_ to avoid race conditions with OnConnectionStatusChanged
+                 auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+                    [&](const auto& pair) { return pair.first == remote_id; });
+                 if (it_connected == connected_devices_.end()) {
+                     connected_devices_.emplace_back(remote_id, device);
+                 }
+                 
+                 // Remove from connecting list
+                 auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
+                        [&](const auto& pair) { return pair.first == remote_id; });
+                 if (it_connecting != currently_connecting_devices_.end()) {
+                     currently_connecting_devices_.erase(it_connecting);
+                 }
+
                  result->Success(flutter::EncodableValue(true));
             } else {
                  currently_connecting_devices_.erase(
@@ -459,13 +472,19 @@ void FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged(
 
         if (d.ConnectionStatus() == BluetoothConnectionStatus::Connected) {
 
-            auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
+            // Check if already in connected list
+             auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(),
                 [&](const auto& pair) { return pair.first == remote_id; });
+             
+             if (it_connected == connected_devices_.end()) {
+                  auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
+                    [&](const auto& pair) { return pair.first == remote_id; });
 
-            if(it_connecting != currently_connecting_devices_.end()) {
-                 connected_devices_.emplace_back(remote_id, d);
-                 currently_connecting_devices_.erase(it_connecting);
-            }
+                  if(it_connecting != currently_connecting_devices_.end()) {
+                       connected_devices_.emplace_back(remote_id, d);
+                       currently_connecting_devices_.erase(it_connecting);
+                  }
+             }
             
             connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1); // connected
             channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
