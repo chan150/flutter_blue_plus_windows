@@ -135,7 +135,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
 
         // Ensure entry exists in cache
         if (scan_results_cache_.find(remote_id) == scan_results_cache_.end()) {
-             scan_results_cache_[remote_id] = flutter::EncodableMap();
+             scan_results_cache_[remote_id] = {}; // Initialize with empty map
         }
         auto& map = scan_results_cache_[remote_id];
 
@@ -174,7 +174,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
 
         // manufacturer_data (Merge)
         if (advertisement.ManufacturerData().Size() > 0) {
-            flutter::EncodableMap msd_map;
+            flutter::EncodableMap msd_map; // Use default type or std::map<EncodableValue, EncodableValue>
             
             // Retrieve existing map if it exists
             auto it = map.find(flutter::EncodableValue("manufacturer_data"));
@@ -249,6 +249,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
         }
 
         flutter::EncodableMap response;
+        // map is std::map<EncodableValue, EncodableValue> which is implicitly EncodableMap
         response[flutter::EncodableValue("advertisements")] = flutter::EncodableList{ flutter::EncodableValue(map) };
         channel_->InvokeMethod("OnScanResponse", std::make_unique<flutter::EncodableValue>(response));
     }

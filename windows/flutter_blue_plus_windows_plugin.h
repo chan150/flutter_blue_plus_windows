@@ -43,7 +43,9 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   std::vector<std::pair<std::string, winrt::Windows::Foundation::IInspectable>> connected_devices_{};
   std::vector<std::pair<std::string, winrt::Windows::Foundation::IInspectable>> currently_connecting_devices_{};
   std::map<std::string, int32_t> rssi_cache_{};
-  std::map<std::string, flutter::EncodableMap> scan_results_cache_{};
+  
+  // Use explicit types to avoid dependency on typedef availability in headers
+  std::map<std::string, std::map<flutter::EncodableValue, flutter::EncodableValue>> scan_results_cache_{};
 
   void OnAdvertisementReceived(
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher&,
