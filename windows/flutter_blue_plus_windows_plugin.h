@@ -39,6 +39,9 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   winrt::event_token received_token_{};
   winrt::event_token stopped_token_{};
 
+  // UI Thread context
+  winrt::apartment_context ui_thread_;
+
   // Using vector of pairs to avoid std::map issues with non-default-constructible WinRT types
   std::vector<std::pair<std::string, winrt::Windows::Foundation::IInspectable>> connected_devices_{};
   std::vector<std::pair<std::string, winrt::Windows::Foundation::IInspectable>> currently_connecting_devices_{};
