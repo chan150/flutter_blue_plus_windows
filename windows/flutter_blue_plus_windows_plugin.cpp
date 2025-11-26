@@ -143,7 +143,18 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
         map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
         map[flutter::EncodableValue("rssi")] =
             flutter::EncodableValue(static_cast<int32_t>(args.RawSignalStrengthInDBm()));
-        map[flutter::EncodableValue("connectable")] = flutter::EncodableValue(args.IsConnectable() ? 1 : 0);
+        
+        // connectable (Merge: once 1, always 1)
+        int connectable = args.IsConnectable() ? 1 : 0;
+        if (connectable == 0) {
+             auto it = map.find(flutter::EncodableValue("connectable"));
+             if (it != map.end()) {
+                 if (auto* val = std::get_if<int>(&it->second)) {
+                     if (*val == 1) connectable = 1;
+                 }
+             }
+        }
+        map[flutter::EncodableValue("connectable")] = flutter::EncodableValue(connectable);
 
         auto advertisement = args.Advertisement();
 
