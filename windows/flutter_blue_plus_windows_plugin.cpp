@@ -300,9 +300,10 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetSystemDevicesAsync(std::
 
                 std::string remote_id = uint64_to_mac_string(bleDevice.BluetoothAddress());
 
-                // Check actual system connection status
-                bool is_connected = (bleDevice.ConnectionStatus() == BluetoothConnectionStatus::Connected);
-                // Also could check internal list, but system status is more accurate for "GetSystemDevices"
+                auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+                    [&](const auto& pair) { return pair.first == remote_id; });
+
+                bool is_connected = (it != connected_devices_.end());
 
                 flutter::EncodableMap deviceMap = {};
                 deviceMap[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
@@ -387,6 +388,21 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
     std::string error_msg;
     try {
         uint64_t bluetoothAddress = utils::mac_to_uint64(remote_id);
+
+        // Check if already connected
+        auto it_existing = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+                [&](const auto& pair) { return pair.first == remote_id; });
+        if (it_existing != connected_devices_.end()) {
+             // Already connected, ensure event is sent and return success
+             co_await ui_thread_;
+             flutter::EncodableMap connection_state;
+             connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+             connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1); 
+             channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
+             result->Success(flutter::EncodableValue(true));
+             co_return;
+        }
+
         auto device = co_await BluetoothLEDevice::FromBluetoothAddressAsync(bluetoothAddress);
 
         if (device) {
@@ -418,6 +434,12 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
                  if (it_connecting != currently_connecting_devices_.end()) {
                      currently_connecting_devices_.erase(it_connecting);
                  }
+
+                 // Send Connected Event explicitly to ensure Dart state updates
+                 flutter::EncodableMap connection_state;
+                 connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+                 connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1); 
+                 channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
 
                  result->Success(flutter::EncodableValue(true));
             } else {
@@ -486,6 +508,7 @@ void FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged(
                   }
              }
             
+            // Only invoke if needed, but safe to invoke multiple times (Dart side dedups usually)
             connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1); // connected
             channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
 
@@ -689,6 +712,14 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
                 if (device) {
                      device.Close(); // This will trigger OnConnectionStatusChanged which removes from connected_devices_
                 }
+                
+                // Explicitly send Disconnected event to ensure Dart state updates immediately
+                flutter::EncodableMap connection_state;
+                connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+                connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); 
+                channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
+
+                // Note: OnConnectionStatusChanged will also fire, which acts as a fallback/confirmation
             } else {
                  // Also check currently_connecting_devices_ if not found in connected_devices_
                  auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
