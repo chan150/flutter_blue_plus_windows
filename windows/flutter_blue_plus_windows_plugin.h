@@ -3,6 +3,7 @@
 
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
+#include <flutter/standard_method_codec.h>
 #include <winrt/Windows.Devices.Bluetooth.Advertisement.h>
 #include <winrt/Windows.Devices.Bluetooth.h>
 #include <winrt/Windows.Devices.Bluetooth.GenericAttributeProfile.h>
