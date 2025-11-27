@@ -931,11 +931,20 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
             response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
+            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
+            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
             
             co_await ui_thread_;
-            result_ptr->Success(flutter::EncodableValue(response));
+            channel_->InvokeMethod("OnCharacteristicReceived", std::make_unique<flutter::EncodableValue>(response));
+            result_ptr->Success(flutter::EncodableValue(true));
         } else {
             error_msg = "Read failed: " + std::to_string((int)readResult.Status());
+            if (readResult.Status() == GattCommunicationStatus::ProtocolError) {
+                auto err = readResult.ProtocolError();
+                if (err) {
+                    error_msg += " (ATT Error: " + std::to_string(err.Value()) + ")";
+                }
+            }
             co_await ui_thread_;
             result_ptr->Error("readCharacteristic", error_msg);
         }
@@ -1035,9 +1044,27 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteCharacteristicAsync(
         
         if (writeResult.Status() == GattCommunicationStatus::Success) {
             co_await ui_thread_;
+            
+            flutter::EncodableMap response;
+            response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+            response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
+            response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
+            response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
+            response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
+            response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
+            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
+            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
+
+            channel_->InvokeMethod("OnCharacteristicWritten", std::make_unique<flutter::EncodableValue>(response));
             result_ptr->Success(flutter::EncodableValue(true));
         } else {
             error_msg = "Write failed: " + std::to_string((int)writeResult.Status());
+            if (writeResult.Status() == GattCommunicationStatus::ProtocolError) {
+                auto err = writeResult.ProtocolError();
+                if (err) {
+                    error_msg += " (ATT Error: " + std::to_string(err.Value()) + ")";
+                }
+            }
             co_await ui_thread_;
             result_ptr->Error("writeCharacteristic", error_msg);
         }
@@ -1143,13 +1170,23 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
             response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
             response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
             response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(descriptor_uuid_str);
+            response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id); 
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
+            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
+            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
             
             co_await ui_thread_;
-            result_ptr->Success(flutter::EncodableValue(response));
+            channel_->InvokeMethod("OnDescriptorRead", std::make_unique<flutter::EncodableValue>(response));
+            result_ptr->Success(flutter::EncodableValue(true));
         } else {
             error_msg = "Read failed: " + std::to_string((int)readResult.Status());
+            if (readResult.Status() == GattCommunicationStatus::ProtocolError) {
+                auto err = readResult.ProtocolError();
+                if (err) {
+                    error_msg += " (ATT Error: " + std::to_string(err.Value()) + ")";
+                }
+            }
             co_await ui_thread_;
             result_ptr->Error("readDescriptor", error_msg);
         }
@@ -1254,9 +1291,28 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
         
         if (writeResult.Status() == GattCommunicationStatus::Success) {
             co_await ui_thread_;
+            
+            flutter::EncodableMap response;
+            response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+            response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
+            response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
+            response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(descriptor_uuid_str);
+            response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
+            response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
+            response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
+            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
+            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
+
+            channel_->InvokeMethod("OnDescriptorWritten", std::make_unique<flutter::EncodableValue>(response));
             result_ptr->Success(flutter::EncodableValue(true));
         } else {
             error_msg = "Write failed: " + std::to_string((int)writeResult.Status());
+            if (writeResult.Status() == GattCommunicationStatus::ProtocolError) {
+                auto err = writeResult.ProtocolError();
+                if (err) {
+                    error_msg += " (ATT Error: " + std::to_string(err.Value()) + ")";
+                }
+            }
             co_await ui_thread_;
             result_ptr->Error("writeDescriptor", error_msg);
         }
