@@ -1082,15 +1082,35 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteCharacteristicAsync(
             channel_->InvokeMethod("OnCharacteristicWritten", std::make_unique<flutter::EncodableValue>(response));
             result_ptr->Success(flutter::EncodableValue(true));
         } else {
-            error_msg = "Write failed: " + std::to_string((int)writeResult.Status());
+            // 실패 시에도 이벤트를 보내야 하는지? Android는 보냄.
+            // 하지만 여기서는 result->Success(true)를 호출하지 않고 Error를 반환하면 Dart에서 예외 발생
+            // Android 동작을 맞추려면:
+            // 1. OnCharacteristicWritten 이벤트 전송 (에러 정보 포함)
+            // 2. result->Success(true) 반환 (Dart에서 예외 발생 안 함, 이벤트로 처리)
+            
+            co_await ui_thread_;
+            
+            flutter::EncodableMap response;
+            response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+            response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
+            response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
+            response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
+            response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
+            response[flutter::EncodableValue("success")] = flutter::EncodableValue(0); // Failed
+            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(static_cast<int32_t>(writeResult.Status()));
+            
+            std::string err_str = "GATT Error " + std::to_string((int)writeResult.Status());
             if (writeResult.Status() == GattCommunicationStatus::ProtocolError) {
                 auto err = writeResult.ProtocolError();
                 if (err) {
-                    error_msg += " (ATT Error: " + std::to_string(err.Value()) + ")";
+                    response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(static_cast<int32_t>(err.Value())); // Use ATT Error code
+                    err_str = "ATT Error " + std::to_string(err.Value());
                 }
             }
-            co_await ui_thread_;
-            result_ptr->Error("writeCharacteristic", error_msg);
+            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue(err_str);
+
+            channel_->InvokeMethod("OnCharacteristicWritten", std::make_unique<flutter::EncodableValue>(response));
+            result_ptr->Success(flutter::EncodableValue(true)); // Dart call itself succeeds, error is in event
         }
         
         co_return;
@@ -1433,9 +1453,6 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
                      device.Close(); 
                 }
                 
-                // 여기서 목록에서 제거해야 함!
-                connected_devices_.erase(it);
-
                 flutter::EncodableMap connection_state;
                 connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
                 connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); 
