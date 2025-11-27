@@ -1,3 +1,5 @@
+#pragma warning(disable : 4819)
+
 #include "flutter_blue_plus_windows_plugin.h"
 
 #include <flutter/method_channel.h>
@@ -454,6 +456,22 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
 
                  result->Success(flutter::EncodableValue(true));
             } else {
+                 // Cleanup if it was moved to connected_devices_ by the event handler
+                 co_await ui_thread_;
+                 auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(),
+                    [&](const auto& pair) { return pair.first == remote_id; });
+                 
+                 if (it_connected != connected_devices_.end()) {
+                     auto d = it_connected->second.as<BluetoothLEDevice>();
+                     if (d) d.Close();
+                     connected_devices_.erase(it_connected);
+
+                     flutter::EncodableMap connection_state;
+                     connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+                     connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); 
+                     channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
+                 }
+
                  currently_connecting_devices_.erase(
                     std::remove_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
                         [&](const auto& pair) { return pair.first == remote_id; }),
@@ -823,7 +841,13 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
         if (status == GattCommunicationStatus::Success) {
             result_ptr->Success(flutter::EncodableValue(true));
         } else {
-            result_ptr->Error("setNotifyValue", "Failed to write CCCD");
+            error_msg = "Failed to write CCCD: " + std::to_string((int)status);
+            if (status == GattCommunicationStatus::ProtocolError) {
+                 // Can't get ATT error easily from here for CCCD write in WinRT without IAsyncOperationWithProgress or similar, 
+                 // but usually ProtocolError is the main one. 
+                 // We can just report the status.
+            }
+            result_ptr->Error("setNotifyValue", error_msg);
         }
         
         co_return;
@@ -1173,8 +1197,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
             response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id); 
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
-            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
-            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
             
             co_await ui_thread_;
             channel_->InvokeMethod("OnDescriptorRead", std::make_unique<flutter::EncodableValue>(response));
@@ -1409,6 +1431,9 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
                      device.Close(); 
                 }
                 
+                // 여기서 목록에서 제거해야 함!
+                connected_devices_.erase(it);
+
                 flutter::EncodableMap connection_state;
                 connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
                 connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); 
