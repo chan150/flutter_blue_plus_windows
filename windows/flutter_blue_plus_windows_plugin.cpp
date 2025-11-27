@@ -425,6 +425,10 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
             // Use Cached to avoid connection drops
             auto gatt_result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Cached);
             
+            if (gatt_result.Status() != GattCommunicationStatus::Success) {
+                gatt_result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Uncached);
+            }
+
             if (gatt_result.Status() == GattCommunicationStatus::Success) {
                  co_await ui_thread_;
 
@@ -698,6 +702,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
     
     auto result_ptr = std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(std::move(result));
     std::string error_msg;
+    bool is_access_denied = false;
 
     try {
         std::string remote_id = utils::from_value<std::string>(&args[flutter::EncodableValue("remote_id")]);
@@ -825,7 +830,11 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
 
     } catch (const winrt::hresult_error& e) {
         error_msg = utils::to_string(e.message());
-        if (error_msg.empty()) error_msg = "WinRT error code: " + std::to_string(e.code());
+        if (error_msg.empty()) error_msg = "WinRT error code: " + std::to_string(e.code().value);
+        
+        if (e.code().value == static_cast<int32_t>(0x80070005)) { // E_ACCESSDENIED
+             is_access_denied = true;
+        }
     } catch (const std::exception& e) {
         error_msg = e.what();
     } catch (...) {
@@ -833,7 +842,11 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
     }
 
     co_await ui_thread_;
-    result_ptr->Error("setNotifyValue", error_msg);
+    if (is_access_denied) {
+        result_ptr->Success(flutter::EncodableValue(false));
+    } else {
+        result_ptr->Error("setNotifyValue", error_msg);
+    }
 }
 
 void FlutterBluePlusWindowsPlugin::HandleMethodCall(
@@ -988,6 +1001,8 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
         result->Success(flutter::EncodableValue(static_cast<int>(connected_devices_.size())));
         return;
     }
+
+    // TODO: Implement other methods like requestMtu, readCharacteristic, writeCharacteristic, etc.
 
     if (method == "turnOn") {
         result->Success(flutter::EncodableValue(false));
