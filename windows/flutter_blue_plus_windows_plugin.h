@@ -79,6 +79,22 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
       flutter::EncodableMap args,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
+  winrt::fire_and_forget ReadCharacteristicAsync(
+      flutter::EncodableMap args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+  winrt::fire_and_forget WriteCharacteristicAsync(
+      flutter::EncodableMap args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+  winrt::fire_and_forget ReadDescriptorAsync(
+      flutter::EncodableMap args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+  winrt::fire_and_forget WriteDescriptorAsync(
+      flutter::EncodableMap args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
   void OnConnectionStatusChanged(
     const winrt::Windows::Devices::Bluetooth::BluetoothLEDevice&,
     const winrt::Windows::Foundation::IInspectable&);
