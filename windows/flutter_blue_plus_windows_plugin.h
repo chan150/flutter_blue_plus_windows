@@ -5,6 +5,7 @@
 #include <flutter/plugin_registrar_windows.h>
 #include <winrt/Windows.Devices.Bluetooth.Advertisement.h>
 #include <winrt/Windows.Devices.Bluetooth.h>
+#include <winrt/Windows.Devices.Bluetooth.GenericAttributeProfile.h>
 #include <winrt/Windows.Foundation.h>
 
 #include <memory>
@@ -50,6 +51,10 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   // Use explicit types to avoid dependency on typedef availability in headers
   std::map<std::string, std::map<flutter::EncodableValue, flutter::EncodableValue>> scan_results_cache_{};
 
+  // Map to store event tokens for characteristic value changes
+  // Key: remote_id:service_uuid:char_uuid:instance_id
+  std::map<std::string, winrt::event_token> notification_tokens_{};
+
   void OnAdvertisementReceived(
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher&,
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementReceivedEventArgs&);
@@ -65,14 +70,21 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
       std::string remote_id,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
-  // Added DiscoverServicesAsync declaration
   winrt::fire_and_forget DiscoverServicesAsync(
       std::string remote_id,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  
+  winrt::fire_and_forget SetNotifyValueAsync(
+      flutter::EncodableMap args,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   void OnConnectionStatusChanged(
     const winrt::Windows::Devices::Bluetooth::BluetoothLEDevice&,
     const winrt::Windows::Foundation::IInspectable&);
+
+  void OnCharacteristicValueChanged(
+      const winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic& sender,
+      const winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattValueChangedEventArgs& args);
 
   std::string uint64_to_mac_string(uint64_t addr);
 };
