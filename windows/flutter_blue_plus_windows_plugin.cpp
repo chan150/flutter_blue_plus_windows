@@ -736,12 +736,9 @@ void FlutterBluePlusWindowsPlugin::OnCharacteristicValueChanged(
 }
 
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
-    flutter::EncodableMap args,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+    flutter::EncodableMap args) {
     
-    auto result_ptr = std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(std::move(result));
     std::string error_msg;
-    bool is_access_denied = false;
 
     try {
         std::string remote_id = utils::from_value<std::string>(&args[flutter::EncodableValue("remote_id")]);
@@ -771,7 +768,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
         }
 
         if (!device) {
-             result_ptr->Error("setNotifyValue", "device is disconnected");
              co_return;
         }
 
@@ -810,8 +806,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
         }
 
         if (!targetChar) {
-            co_await ui_thread_;
-            result_ptr->Error("setNotifyValue", "Characteristic not found");
             co_return;
         }
 
@@ -832,8 +826,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
             } else if (canIndicate) {
                 cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Indicate;
             } else {
-                 co_await ui_thread_;
-                 result_ptr->Error("setNotifyValue", "Characteristic does not support Notify or Indicate");
                  co_return;
             }
 
@@ -858,40 +850,11 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
                  }
              }
         }
-
-        co_await ui_thread_;
-        if (status == GattCommunicationStatus::Success) {
-            result_ptr->Success(flutter::EncodableValue(true));
-        } else {
-            error_msg = "Failed to write CCCD: " + std::to_string((int)status);
-            if (status == GattCommunicationStatus::ProtocolError) {
-                 // Can't get ATT error easily from here for CCCD write in WinRT without IAsyncOperationWithProgress or similar, 
-                 // but usually ProtocolError is the main one. 
-                 // We can just report the status.
-            }
-            result_ptr->Error("setNotifyValue", error_msg);
-        }
         
         co_return;
 
-    } catch (const winrt::hresult_error& e) {
-        error_msg = utils::to_string(e.message());
-        if (error_msg.empty()) error_msg = "WinRT error code: " + std::to_string(e.code().value);
-        
-        if (e.code().value == static_cast<int32_t>(0x80070005)) { // E_ACCESSDENIED
-             is_access_denied = true;
-        }
-    } catch (const std::exception& e) {
-        error_msg = e.what();
     } catch (...) {
-        error_msg = "Unknown error";
-    }
-
-    co_await ui_thread_;
-    if (is_access_denied) {
-        result_ptr->Success(flutter::EncodableValue(false));
-    } else {
-        result_ptr->Error("setNotifyValue", error_msg);
+        // Ignore errors
     }
 }
 
@@ -979,6 +942,8 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
             response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
+            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
+            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
             
             co_await ui_thread_;
             channel_->InvokeMethod("OnCharacteristicReceived", std::make_unique<flutter::EncodableValue>(response));
@@ -1113,8 +1078,32 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteCharacteristicAsync(
                     error_msg += " (ATT Error: " + std::to_string(err.Value()) + ")";
                 }
             }
+            
             co_await ui_thread_;
-            result_ptr->Error("writeCharacteristic", error_msg);
+            
+            flutter::EncodableMap response;
+            response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+            response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
+            response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
+            response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
+            response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
+            response[flutter::EncodableValue("success")] = flutter::EncodableValue(0);
+            
+            int error_code = static_cast<int>(writeResult.Status());
+            if (writeResult.Status() == GattCommunicationStatus::ProtocolError) {
+                 auto err = writeResult.ProtocolError();
+                 if (err) {
+                     error_code = static_cast<int>(err.Value());
+                 }
+            }
+            
+            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(error_code);
+            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue(error_msg);
+
+            channel_->InvokeMethod("OnCharacteristicWritten", std::make_unique<flutter::EncodableValue>(response));
+            
+            // 성공으로 반환해야 Dart에서 예외를 발생시키지 않고 이벤트로 에러 처리 가능
+            result_ptr->Success(flutter::EncodableValue(true));
         }
         
         co_return;
@@ -1171,10 +1160,9 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
         if (servicesResult.Status() == GattCommunicationStatus::Success) {
             for (auto service : servicesResult.Services()) {
                 if (utils::to_uuid_string(service.Uuid()) == service_uuid_str) {
-                    winrt::guid charUuid = utils::parse_uuid(characteristic_uuid_str);
-                    auto charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Cached);
+                    auto charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Cached);
                     if (charsResult.Status() != GattCommunicationStatus::Success) {
-                        charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Uncached);
+                        charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
                     }
 
                     if (charsResult.Status() == GattCommunicationStatus::Success) {
@@ -1226,7 +1214,8 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
             
             co_await ui_thread_;
-            result_ptr->Success(flutter::EncodableValue(response));
+            channel_->InvokeMethod("OnDescriptorRead", std::make_unique<flutter::EncodableValue>(response));
+            result_ptr->Success(flutter::EncodableValue(true));
         } else {
             error_msg = "Read failed: " + std::to_string((int)readResult.Status());
             if (readResult.Status() == GattCommunicationStatus::ProtocolError) {
@@ -1294,20 +1283,18 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
         if (servicesResult.Status() == GattCommunicationStatus::Success) {
             for (auto service : servicesResult.Services()) {
                 if (utils::to_uuid_string(service.Uuid()) == service_uuid_str) {
-                    winrt::guid charUuid = utils::parse_uuid(characteristic_uuid_str);
-                    auto charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Cached);
+                    auto charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Cached);
                     if (charsResult.Status() != GattCommunicationStatus::Success) {
-                        charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Uncached);
+                        charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
                     }
 
                     if (charsResult.Status() == GattCommunicationStatus::Success) {
                         for (auto characteristic : charsResult.Characteristics()) {
                             if (utils::to_uuid_string(characteristic.Uuid()) == characteristic_uuid_str) {
                                 if (static_cast<int32_t>(characteristic.AttributeHandle()) == instance_id) { // check instance id
-                                    winrt::guid descUuid = utils::parse_uuid(descriptor_uuid_str);
-                                    auto descResult = co_await characteristic.GetDescriptorsForUuidAsync(descUuid, BluetoothCacheMode::Cached);
+                                    auto descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Cached);
                                     if (descResult.Status() != GattCommunicationStatus::Success) {
-                                        descResult = co_await characteristic.GetDescriptorsForUuidAsync(descUuid, BluetoothCacheMode::Uncached);
+                                        descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Uncached);
                                     }
                                     
                                     if (descResult.Status() == GattCommunicationStatus::Success) {
@@ -1521,7 +1508,8 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
     if (method == "setNotifyValue") {
         const auto* args = std::get_if<flutter::EncodableMap>(method_call.arguments());
         if (args) {
-            SetNotifyValueAsync(*args, std::move(result));
+            result->Success(flutter::EncodableValue(true)); // Return success immediately
+            SetNotifyValueAsync(*args);
         } else {
              result->Error("setNotifyValue", "Invalid arguments");
         }
@@ -1572,8 +1560,6 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
         result->Success(flutter::EncodableValue(static_cast<int>(connected_devices_.size())));
         return;
     }
-
-    // TODO: Implement other methods like requestMtu, etc.
 
     if (method == "turnOn") {
         result->Success(flutter::EncodableValue(false));

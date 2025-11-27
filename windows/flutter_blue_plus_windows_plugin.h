@@ -76,8 +76,7 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
   
   winrt::fire_and_forget SetNotifyValueAsync(
-      flutter::EncodableMap args,
-      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+      flutter::EncodableMap args);
 
   winrt::fire_and_forget ReadCharacteristicAsync(
       flutter::EncodableMap args,
