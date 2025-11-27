@@ -41,6 +41,14 @@ T from_value(const flutter::EncodableValue* value) {
     if (auto* ptr = std::get_if<T>(value)) {
         return *ptr;
     }
+    if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
+        if (auto* ptr64 = std::get_if<int64_t>(value)) {
+            return static_cast<T>(*ptr64);
+        }
+        if (auto* ptr32 = std::get_if<int32_t>(value)) {
+            return static_cast<T>(*ptr32);
+        }
+    }
     return T{};
 }
 
@@ -815,6 +823,9 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
         
         co_return;
 
+    } catch (const winrt::hresult_error& e) {
+        error_msg = utils::to_string(e.message());
+        if (error_msg.empty()) error_msg = "WinRT error code: " + std::to_string(e.code());
     } catch (const std::exception& e) {
         error_msg = e.what();
     } catch (...) {
