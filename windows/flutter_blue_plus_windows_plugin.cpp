@@ -1197,6 +1197,8 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
             response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id); 
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
+            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
+            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
             
             co_await ui_thread_;
             channel_->InvokeMethod("OnDescriptorRead", std::make_unique<flutter::EncodableValue>(response));
