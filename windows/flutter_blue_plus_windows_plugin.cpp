@@ -36,7 +36,7 @@ namespace flutter_blue_plus_windows {
 
 // Debug Logging Helper
 void Log(const char* format, ...) {
-    char buffer[2048];
+    char buffer[1024];
     va_list args;
     va_start(args, format);
     vsnprintf(buffer, sizeof(buffer), format, args);
@@ -214,7 +214,7 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> FindCharacterist
     auto charsResult = co_await service.GetCharacteristicsAsync(cacheMode);
     if (charsResult.Status() == GattCommunicationStatus::Success) {
         for (auto c : charsResult.Characteristics()) {
-            if (static_cast<int32_t>(c.AttributeHandle()) == instance_id) {
+            if (instance_id != 0 && static_cast<int32_t>(c.AttributeHandle()) == instance_id) {
                 // Log("Found characteristic by handle: %d", instance_id);
                 co_return c;
             }
@@ -239,7 +239,7 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
     BluetoothLEDevice device,
     int instance_id) 
 {
-    // Log("GetCharacteristicByHandleAsync: looking for handle %d", instance_id);
+    Log("GetCharacteristicByHandleAsync: looking for handle %d", instance_id);
 
     // Try Cached
     auto servicesResult = co_await device.GetGattServicesAsync(BluetoothCacheMode::Cached);
@@ -259,7 +259,7 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
         }
     }
     
-    // Log("GetCharacteristicByHandleAsync: not found");
+    Log("GetCharacteristicByHandleAsync: not found");
     co_return nullptr;
 }
 
@@ -1718,29 +1718,46 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
         const auto* remote_id_val_ptr = std::get_if<std::string>(method_call.arguments());
         if (remote_id_val_ptr) {
             std::string remote_id = *remote_id_val_ptr;
+            
+            // 1. Remove subscriptions for this device to release references
+            for (auto it = subscribed_characteristics_.begin(); it != subscribed_characteristics_.end(); ) {
+                if (it->first.find(remote_id) == 0) { // Key starts with remote_id
+                    // No need to explicitly Unsubscribe if we are closing the device, 
+                    // but releasing the GattCharacteristic object is crucial.
+                    it = subscribed_characteristics_.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+
+            // 2. Remove from connected devices list
             auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
                 [&](const auto& pair) { return pair.first == remote_id; });
+            
             if (it != connected_devices_.end()) {
                 auto device = it->second.as<BluetoothLEDevice>();
                 if (device) {
                      device.Close(); 
                 }
-                
-                flutter::EncodableMap connection_state;
-                connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-                connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); 
-                channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
-
-            } else {
-                 auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
-                    [&](const auto& pair) { return pair.first == remote_id; });
-                 if (it_connecting != currently_connecting_devices_.end()) {
-                    auto device_connecting = it_connecting->second.as<BluetoothLEDevice>();
-                    if (device_connecting) {
-                        device_connecting.Close(); 
-                    }
-                 }
+                connected_devices_.erase(it);
             }
+
+            // 3. Remove from connecting list (if any)
+            auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
+                [&](const auto& pair) { return pair.first == remote_id; });
+            if (it_connecting != currently_connecting_devices_.end()) {
+                auto device_connecting = it_connecting->second.as<BluetoothLEDevice>();
+                if (device_connecting) {
+                    device_connecting.Close(); 
+                }
+                currently_connecting_devices_.erase(it_connecting);
+            }
+
+            // 4. Send Disconnected Event
+            flutter::EncodableMap connection_state;
+            connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+            connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); 
+            channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
         }
         result->Success(flutter::EncodableValue(true));
         return;
