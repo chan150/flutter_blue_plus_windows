@@ -687,37 +687,17 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
 }
 
 void FlutterBluePlusWindowsPlugin::OnCharacteristicValueChanged(
+    std::string remote_id,
     const GattCharacteristic& sender,
     const GattValueChangedEventArgs& args) {
 
-    [this, sender, args]() -> winrt::fire_and_forget {
+    [this, remote_id, sender, args]() -> winrt::fire_and_forget {
         co_await ui_thread_;
 
         // sender is a GattCharacteristic
-        std::string remote_id = "";
         std::string service_uuid = utils::to_uuid_string(sender.Service().Uuid());
         std::string characteristic_uuid = utils::to_uuid_string(sender.Uuid());
         int32_t instance_id = static_cast<int32_t>(sender.AttributeHandle());
-
-        try {
-             auto service = sender.Service();
-             if (service) {
-                  std::string device_id = utils::to_string(service.DeviceId());
-                  
-                  // Find device in connected list to get remote_id
-                  for (auto& pair : connected_devices_) {
-                      auto d = pair.second.as<BluetoothLEDevice>();
-                      if (utils::to_string(d.DeviceId()) == device_id) {
-                          remote_id = pair.first;
-                          break;
-                      }
-                  }
-             }
-        } catch (...) {
-            // Ignore
-        }
-
-        if (remote_id.empty()) co_return;
 
         std::vector<uint8_t> value = utils::to_vector(args.CharacteristicValue());
 
@@ -736,8 +716,12 @@ void FlutterBluePlusWindowsPlugin::OnCharacteristicValueChanged(
 }
 
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
-    flutter::EncodableMap args) {
+    std::shared_ptr<flutter::EncodableMap> args_ptr) {
     
+    // Move to background thread immediately
+    co_await winrt::resume_background();
+
+    flutter::EncodableMap& args = *args_ptr;
     std::string error_msg;
 
     try {
@@ -759,6 +743,8 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
         }
 
         BluetoothLEDevice device = nullptr;
+        
+        co_await ui_thread_; // Switch to UI thread to safely access connected_devices_
         {
              auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
                 [&](const auto& pair) { return pair.first == remote_id; });
@@ -766,53 +752,59 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
                  device = it->second.as<BluetoothLEDevice>();
              }
         }
+        co_await winrt::resume_background(); // Switch back to background
 
         if (!device) {
              co_return;
         }
 
-        co_await winrt::resume_background();
-
-        winrt::guid serviceUuid = utils::parse_uuid(service_uuid_str);
-        auto servicesResult = co_await device.GetGattServicesForUuidAsync(serviceUuid, BluetoothCacheMode::Cached);
-        if (servicesResult.Status() != GattCommunicationStatus::Success) {
-             servicesResult = co_await device.GetGattServicesForUuidAsync(serviceUuid, BluetoothCacheMode::Uncached);
-        }
-
-        GattCharacteristic targetChar = nullptr;
-
-        if (servicesResult.Status() == GattCommunicationStatus::Success) {
-            for (auto service : servicesResult.Services()) {
-                if (utils::to_uuid_string(service.Uuid()) == service_uuid_str) {
-                     winrt::guid charUuid = utils::parse_uuid(characteristic_uuid_str);
-                     auto charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Cached);
-                     if (charsResult.Status() != GattCommunicationStatus::Success) {
-                         charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Uncached);
-                     }
-
-                     if (charsResult.Status() == GattCommunicationStatus::Success) {
-                        for (auto characteristic : charsResult.Characteristics()) {
-                            if (utils::to_uuid_string(characteristic.Uuid()) == characteristic_uuid_str) {
-                                if (static_cast<int32_t>(characteristic.AttributeHandle()) == instance_id) {
-                                    targetChar = characteristic;
-                                    break;
-                                }
-                            }
-                        }
-                     }
-                }
-                if (targetChar) break;
-            }
-        }
-
-        if (!targetChar) {
-            co_return;
-        }
-
-        GattCommunicationStatus status = GattCommunicationStatus::Success;
+        // Unique key for storing subscription info
         std::string token_key = remote_id + ":" + service_uuid_str + ":" + characteristic_uuid_str + ":" + std::to_string(instance_id);
 
         if (enable) {
+            // Already subscribed?
+            if (subscribed_characteristics_.find(token_key) != subscribed_characteristics_.end()) {
+                 // If we want to force re-subscribe, we might need to unsubscribe first.
+                 // But typically calling setNotify again with enable=true is just a no-op or refresh.
+            }
+
+            winrt::guid serviceUuid = utils::parse_uuid(service_uuid_str);
+            auto servicesResult = co_await device.GetGattServicesForUuidAsync(serviceUuid, BluetoothCacheMode::Cached);
+            if (servicesResult.Status() != GattCommunicationStatus::Success) {
+                 servicesResult = co_await device.GetGattServicesForUuidAsync(serviceUuid, BluetoothCacheMode::Uncached);
+            }
+
+            GattCharacteristic targetChar = nullptr;
+
+            if (servicesResult.Status() == GattCommunicationStatus::Success) {
+                for (auto service : servicesResult.Services()) {
+                    // UUID checking is redundant if GetGattServicesForUuidAsync worked correctly, but safe.
+                    if (utils::to_uuid_string(service.Uuid()) == service_uuid_str) {
+                         winrt::guid charUuid = utils::parse_uuid(characteristic_uuid_str);
+                         auto charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Cached);
+                         if (charsResult.Status() != GattCommunicationStatus::Success) {
+                             charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Uncached);
+                         }
+
+                         if (charsResult.Status() == GattCommunicationStatus::Success) {
+                            for (auto characteristic : charsResult.Characteristics()) {
+                                if (utils::to_uuid_string(characteristic.Uuid()) == characteristic_uuid_str) {
+                                    if (static_cast<int32_t>(characteristic.AttributeHandle()) == instance_id) {
+                                        targetChar = characteristic;
+                                        break;
+                                    }
+                                }
+                            }
+                         }
+                    }
+                    if (targetChar) break;
+                }
+            }
+
+            if (!targetChar) {
+                co_return;
+            }
+
             GattClientCharacteristicConfigurationDescriptorValue cccdValue = GattClientCharacteristicConfigurationDescriptorValue::None;
             auto props = targetChar.CharacteristicProperties();
             
@@ -829,25 +821,43 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
                  co_return;
             }
 
-            status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(cccdValue);
+            auto status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(cccdValue);
 
             if (status == GattCommunicationStatus::Success) {
                 co_await ui_thread_;
-                if (notification_tokens_.find(token_key) == notification_tokens_.end()) {
-                    auto token = targetChar.ValueChanged({ this, &FlutterBluePlusWindowsPlugin::OnCharacteristicValueChanged });
-                    notification_tokens_[token_key] = token;
+                // Check again if subscribed to avoid race conditions
+                if (subscribed_characteristics_.find(token_key) == subscribed_characteristics_.end()) {
+                    // Use lambda capture for event handler to avoid sender lookup issues
+                    auto token = targetChar.ValueChanged([this, remote_id](GattCharacteristic const& sender, GattValueChangedEventArgs const& args) {
+                        this->OnCharacteristicValueChanged(remote_id, sender, args);
+                    });
+                    
+                    // Store characteristic object and token to keep them alive and for unsubscription
+                    subscribed_characteristics_[token_key] = { targetChar, token };
                 }
             }
         } else {
-             status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None);
+             // Disable
              
-             if (status == GattCommunicationStatus::Success) {
-                 co_await ui_thread_;
-                 auto it = notification_tokens_.find(token_key);
-                 if (it != notification_tokens_.end()) {
-                     targetChar.ValueChanged(it->second); 
-                     notification_tokens_.erase(it);
-                 }
+             co_await ui_thread_;
+             auto it = subscribed_characteristics_.find(token_key);
+             GattCharacteristic targetChar = nullptr;
+
+             if (it != subscribed_characteristics_.end()) {
+                 targetChar = it->second.characteristic;
+                 // Unregister event handler
+                 targetChar.ValueChanged(it->second.token);
+                 subscribed_characteristics_.erase(it);
+             }
+             
+             // If we had the characteristic object, use it to disable CCCD
+             if (targetChar) {
+                 co_await winrt::resume_background();
+                 co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None);
+             } else {
+                 // If characteristic wasn't found in map (unexpected), we might want to try finding it again from device
+                 // to ensure notifications are disabled at the device level.
+                 // For now, assuming if it's not in map, we are not subscribed.
              }
         }
         
@@ -942,8 +952,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
             response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
-            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
-            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
             
             co_await ui_thread_;
             channel_->InvokeMethod("OnCharacteristicReceived", std::make_unique<flutter::EncodableValue>(response));
@@ -1160,9 +1168,10 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
         if (servicesResult.Status() == GattCommunicationStatus::Success) {
             for (auto service : servicesResult.Services()) {
                 if (utils::to_uuid_string(service.Uuid()) == service_uuid_str) {
-                    auto charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Cached);
+                    winrt::guid charUuid = utils::parse_uuid(characteristic_uuid_str);
+                    auto charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Cached);
                     if (charsResult.Status() != GattCommunicationStatus::Success) {
-                        charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
+                        charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Uncached);
                     }
 
                     if (charsResult.Status() == GattCommunicationStatus::Success) {
@@ -1283,18 +1292,20 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
         if (servicesResult.Status() == GattCommunicationStatus::Success) {
             for (auto service : servicesResult.Services()) {
                 if (utils::to_uuid_string(service.Uuid()) == service_uuid_str) {
-                    auto charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Cached);
+                    winrt::guid charUuid = utils::parse_uuid(characteristic_uuid_str);
+                    auto charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Cached);
                     if (charsResult.Status() != GattCommunicationStatus::Success) {
-                        charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
+                        charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Uncached);
                     }
 
                     if (charsResult.Status() == GattCommunicationStatus::Success) {
                         for (auto characteristic : charsResult.Characteristics()) {
                             if (utils::to_uuid_string(characteristic.Uuid()) == characteristic_uuid_str) {
                                 if (static_cast<int32_t>(characteristic.AttributeHandle()) == instance_id) { // check instance id
-                                    auto descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Cached);
+                                    winrt::guid descUuid = utils::parse_uuid(descriptor_uuid_str);
+                                    auto descResult = co_await characteristic.GetDescriptorsForUuidAsync(descUuid, BluetoothCacheMode::Cached);
                                     if (descResult.Status() != GattCommunicationStatus::Success) {
-                                        descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Uncached);
+                                        descResult = co_await characteristic.GetDescriptorsForUuidAsync(descUuid, BluetoothCacheMode::Uncached);
                                     }
                                     
                                     if (descResult.Status() == GattCommunicationStatus::Success) {
@@ -1388,7 +1399,7 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
         currently_connecting_devices_.clear();
         rssi_cache_.clear();
         scan_results_cache_.clear();
-        notification_tokens_.clear(); 
+        subscribed_characteristics_.clear();
 
         result->Success(flutter::EncodableValue(count));
         return;
@@ -1508,8 +1519,13 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
     if (method == "setNotifyValue") {
         const auto* args = std::get_if<flutter::EncodableMap>(method_call.arguments());
         if (args) {
-            result->Success(flutter::EncodableValue(true)); // Return success immediately
-            SetNotifyValueAsync(*args);
+            // Create a shared_ptr copy of args to pass to async function safely
+            auto args_ptr = std::make_shared<flutter::EncodableMap>(*args);
+            
+            // Return success immediately to avoid timeout
+            result->Success(flutter::EncodableValue(true)); 
+            
+            SetNotifyValueAsync(args_ptr);
         } else {
              result->Error("setNotifyValue", "Invalid arguments");
         }
@@ -1560,6 +1576,8 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(
         result->Success(flutter::EncodableValue(static_cast<int>(connected_devices_.size())));
         return;
     }
+
+    // TODO: Implement other methods like requestMtu, etc.
 
     if (method == "turnOn") {
         result->Success(flutter::EncodableValue(false));

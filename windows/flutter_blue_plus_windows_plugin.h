@@ -17,6 +17,11 @@
 
 namespace flutter_blue_plus_windows {
 
+struct SubscribedCharacteristic {
+    winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic characteristic = nullptr;
+    winrt::event_token token;
+};
+
 class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar);
@@ -52,9 +57,9 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   // Use explicit types to avoid dependency on typedef availability in headers
   std::map<std::string, std::map<flutter::EncodableValue, flutter::EncodableValue>> scan_results_cache_{};
 
-  // Map to store event tokens for characteristic value changes
+  // Map to store event tokens and characteristic objects for notifications
   // Key: remote_id:service_uuid:char_uuid:instance_id
-  std::map<std::string, winrt::event_token> notification_tokens_{};
+  std::map<std::string, SubscribedCharacteristic> subscribed_characteristics_{};
 
   void OnAdvertisementReceived(
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher&,
@@ -76,7 +81,7 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
   
   winrt::fire_and_forget SetNotifyValueAsync(
-      flutter::EncodableMap args);
+      std::shared_ptr<flutter::EncodableMap> args);
 
   winrt::fire_and_forget ReadCharacteristicAsync(
       flutter::EncodableMap args,
@@ -99,6 +104,7 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
     const winrt::Windows::Foundation::IInspectable&);
 
   void OnCharacteristicValueChanged(
+      std::string remote_id,
       const winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic& sender,
       const winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattValueChangedEventArgs& args);
 
