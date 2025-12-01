@@ -36,7 +36,7 @@ namespace flutter_blue_plus_windows {
 
 // Debug Logging Helper
 void Log(const char* format, ...) {
-    char buffer[1024];
+    char buffer[2048];
     va_list args;
     va_start(args, format);
     vsnprintf(buffer, sizeof(buffer), format, args);
@@ -582,10 +582,14 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
             device.ConnectionStatusChanged({ this, &FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged });
             
             // Trigger connection by getting GATT services
-            // Use Cached to avoid connection drops
+            // First try cached
             auto gatt_result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Cached);
             
-            if (gatt_result.Status() != GattCommunicationStatus::Success) {
+            // If cached failed OR cached success but not connected -> try uncached to force connection
+            if (gatt_result.Status() != GattCommunicationStatus::Success || 
+                device.ConnectionStatus() != BluetoothConnectionStatus::Connected) {
+                
+                // Retry with Uncached to force physical connection
                 gatt_result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Uncached);
             }
 
@@ -845,6 +849,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
     int instance_id = 0;
     bool success_event = false;
     std::string error_string = "Unknown Error";
+    std::vector<uint8_t> return_value = {0x00, 0x00};
 
     try {
         remote_id = utils::from_value<std::string>(&args[flutter::EncodableValue("remote_id")]);
@@ -921,10 +926,13 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
 
             if (force_indications && canIndicate) {
                 cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Indicate;
+                return_value = {0x02, 0x00}; // Indicate
             } else if (canNotify) {
                 cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Notify;
+                return_value = {0x01, 0x00}; // Notify
             } else if (canIndicate) {
                 cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Indicate;
+                return_value = {0x02, 0x00}; // Indicate
             } else {
                  Log("SetNotifyValueAsync: Notify/Indicate not supported");
                  error_string = "Notify/Indicate not supported";
@@ -986,12 +994,22 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
             if (status == GattCommunicationStatus::Success) {
                 Log("SetNotifyValueAsync: Write CCCD success");
                 co_await ui_thread_;
-                if (subscribed_characteristics_.find(token_key) == subscribed_characteristics_.end()) {
-                    auto token = targetChar.ValueChanged([this, remote_id](GattCharacteristic const& sender, GattValueChangedEventArgs const& args) {
-                        this->OnCharacteristicValueChanged(remote_id, sender, args);
-                    });
-                    subscribed_characteristics_[token_key] = { targetChar, token };
+                
+                // Always setup event handler if success, even if map entry exists (to be safe/update)
+                // Remove old subscription if exists
+                auto it = subscribed_characteristics_.find(token_key);
+                if (it != subscribed_characteristics_.end()) {
+                     try {
+                        it->second.characteristic.ValueChanged(it->second.token);
+                     } catch(...) {}
+                     subscribed_characteristics_.erase(it);
                 }
+
+                auto token = targetChar.ValueChanged([this, remote_id](GattCharacteristic const& sender, GattValueChangedEventArgs const& args) {
+                    this->OnCharacteristicValueChanged(remote_id, sender, args);
+                });
+                subscribed_characteristics_[token_key] = { targetChar, token };
+                
                 success_event = true;
                 error_string = "GATT_SUCCESS";
             } else {
@@ -1000,6 +1018,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
             }
         } else {
              // Disable
+             return_value = {0x00, 0x00};
              GattCommunicationStatus status = GattCommunicationStatus::ProtocolError;
              try {
                 status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None);
@@ -1078,8 +1097,7 @@ send_event:
     response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue("2902"); 
     response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
     
-    std::vector<uint8_t> val = {0x00, 0x00}; 
-    response[flutter::EncodableValue("value")] = flutter::EncodableValue(val);
+    response[flutter::EncodableValue("value")] = flutter::EncodableValue(return_value);
     response[flutter::EncodableValue("success")] = flutter::EncodableValue(success_event ? 1 : 0);
     response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(success_event ? 0 : 1);
     response[flutter::EncodableValue("error_string")] = flutter::EncodableValue(error_string);
