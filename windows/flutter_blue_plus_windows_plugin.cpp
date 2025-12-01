@@ -141,6 +141,11 @@ winrt::guid parse_uuid(const std::string& uuid_str) {
 
 }  // namespace utils
 
+struct CharacteristicAndDescriptor {
+    GattCharacteristic characteristic;
+    GattDescriptor descriptor;
+};
+
 // Forward Declarations
 winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> FindCharacteristicInServiceAsync(
     GattDeviceService service,
@@ -210,8 +215,6 @@ winrt::Windows::Foundation::IAsyncAction PopulateCharacteristicsAsync(
 
             charMap[flutter::EncodableValue("properties")] = propsMap;
 
-            // Do NOT read descriptors here to avoid performance hit and to keep logic simple.
-            // Just discovery. The `descriptors` list will be populated with basic info.
             auto descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Uncached);
             flutter::EncodableList descList;
             if (descResult.Status() == GattCommunicationStatus::Success) {
@@ -369,9 +372,6 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
     
     Log("GetCharacteristicAsync: svc=%s, chr=%s, primary=%s, handle=%d", service_uuid_str.c_str(), characteristic_uuid_str.c_str(), primary_service_uuid_str.c_str(), instance_id);
 
-    winrt::guid serviceUuid = utils::parse_uuid(service_uuid_str);
-    winrt::guid charUuid = utils::parse_uuid(characteristic_uuid_str);
-
     if (!primary_service_uuid_str.empty()) {
         // Secondary Service Case
         winrt::guid primaryUuid = utils::parse_uuid(primary_service_uuid_str);
@@ -385,8 +385,9 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
 
         if (primaryResult.Status() == GattCommunicationStatus::Success) {
             for (auto primaryService : primaryResult.Services()) {
-                
+                winrt::guid serviceUuid = utils::parse_uuid(service_uuid_str);
                 GattDeviceServicesResult includedResult = nullptr;
+
                 includedResult = co_await primaryService.GetIncludedServicesForUuidAsync(serviceUuid, BluetoothCacheMode::Cached);
                 if (includedResult.Status() != GattCommunicationStatus::Success) {
                      includedResult = co_await primaryService.GetIncludedServicesForUuidAsync(serviceUuid, BluetoothCacheMode::Uncached);
@@ -394,7 +395,9 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
 
                 if (includedResult.Status() == GattCommunicationStatus::Success) {
                     for (auto service : includedResult.Services()) {
+                        winrt::guid charUuid = utils::parse_uuid(characteristic_uuid_str);
                         GattCharacteristicsResult charsResult = nullptr;
+
                         charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Cached);
                         if (charsResult.Status() != GattCommunicationStatus::Success) {
                              charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Uncached);
@@ -416,6 +419,7 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
         }
     } else {
         // Primary Service Case
+        winrt::guid serviceUuid = utils::parse_uuid(service_uuid_str);
         GattDeviceServicesResult servicesResult = nullptr;
 
         // Try Cached
@@ -426,21 +430,19 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
 
         if (servicesResult.Status() == GattCommunicationStatus::Success) {
             for (auto service : servicesResult.Services()) {
-                // Compare GUIDs instead of strings to handle short/long format mismatch
-                if (service.Uuid() == serviceUuid) {
-                     GattCharacteristicsResult charsResult = nullptr;
-                     charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Cached);
+                // Check UUID match again to be safe, sometimes Windows returns loose matches
+                if (utils::to_uuid_string(service.Uuid()) == service_uuid_str) {
+                     winrt::guid charUuid = utils::parse_uuid(characteristic_uuid_str);
+                     auto charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Cached);
                      if (charsResult.Status() != GattCommunicationStatus::Success) {
                           charsResult = co_await service.GetCharacteristicsForUuidAsync(charUuid, BluetoothCacheMode::Uncached);
                      }
-                     if (charsResult.Status() == GattCommunicationStatus::Success) {
+                     if (charsResult.Status() == GattCommunicationStatus::Success && charsResult.Characteristics().Size() > 0) {
+                          targetChar = charsResult.Characteristics().GetAt(0);
                           for (auto c : charsResult.Characteristics()) {
-                                // Double check UUID match (though GetCharacteristicsForUuidAsync should filter)
-                                if (c.Uuid() == charUuid) { 
-                                    if(instance_id == 0 || static_cast<int32_t>(c.AttributeHandle()) == instance_id) {
-                                        targetChar = c;
-                                        break;
-                                    }
+                                if(instance_id != 0 && static_cast<int32_t>(c.AttributeHandle()) == instance_id) {
+                                    targetChar = c;
+                                    break;
                                 }
                           }
                      }
@@ -448,12 +450,6 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
                 if (targetChar) break;
             }
         }
-    }
-
-    if (targetChar) {
-        Log("GetCharacteristicAsync: Found by UUID");
-    } else {
-        Log("GetCharacteristicAsync: Not found");
     }
 
     co_return targetChar;
@@ -473,7 +469,7 @@ winrt::Windows::Foundation::IAsyncOperation<GattDescriptor> GetDescriptorAsync(
     auto descResult = co_await characteristic.GetDescriptorsForUuidAsync(descUuid, BluetoothCacheMode::Cached);
     if (descResult.Status() == GattCommunicationStatus::Success) {
         for (auto descriptor : descResult.Descriptors()) {
-            if (descriptor.Uuid() == descUuid) {
+            if (utils::to_uuid_string(descriptor.Uuid()) == descriptor_uuid_str) {
                 targetDesc = descriptor;
                 break;
             }
@@ -486,7 +482,7 @@ winrt::Windows::Foundation::IAsyncOperation<GattDescriptor> GetDescriptorAsync(
     descResult = co_await characteristic.GetDescriptorsForUuidAsync(descUuid, BluetoothCacheMode::Uncached);
     if (descResult.Status() == GattCommunicationStatus::Success) {
         for (auto descriptor : descResult.Descriptors()) {
-            if (descriptor.Uuid() == descUuid) {
+            if (utils::to_uuid_string(descriptor.Uuid()) == descriptor_uuid_str) {
                 targetDesc = descriptor;
                 break;
             }
@@ -1384,16 +1380,22 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
         Log("ReadCharacteristicAsync: looking for handle %d", instance_id);
 
         // 1. Try to reuse subscribed characteristic object if available
-        // Note: Reusing subscribed characteristic can be risky if the object becomes stale.
-        // It's safer to re-fetch unless performance is critical.
-        // Given "writeCharacteristic not found" issues, always re-fetching is safer.
-        
-        if (instance_id != 0) {
-            targetChar = co_await GetCharacteristicByHandleAsync(device, instance_id);
+        std::string token_key = remote_id + ":" + service_uuid_str + ":" + characteristic_uuid_str + ":" + std::to_string(instance_id);
+        co_await ui_thread_;
+        auto it_sub = subscribed_characteristics_.find(token_key);
+        if (it_sub != subscribed_characteristics_.end()) {
+            targetChar = it_sub->second.characteristic;
         }
+        co_await winrt::resume_background();
 
+        // 2. If not found, find via UUIDs/Handle
         if (!targetChar) {
-             targetChar = co_await GetCharacteristicAsync(device, service_uuid_str, characteristic_uuid_str, primary_service_uuid_str, instance_id);
+             if (instance_id != 0) {
+                  targetChar = co_await GetCharacteristicByHandleAsync(device, instance_id);
+             }
+             if (!targetChar) {
+                 targetChar = co_await GetCharacteristicAsync(device, service_uuid_str, characteristic_uuid_str, primary_service_uuid_str, instance_id);
+             }
         }
 
         if (!targetChar) {
@@ -1632,11 +1634,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
         GattCharacteristic targetChar = nullptr;
 
         // 1. Try to find characteristic by handle first
-        // NOTE: For descriptors, FBP might send descriptor handle in instance_id,
-        // but we need characteristic first. If instance_id is characteristic handle, good.
-        // If it is descriptor handle, we need GetCharacteristicByDescriptorHandleAsync.
-        // Assuming instance_id passed to readDescriptor is the handle of the descriptor itself.
-        
         if (instance_id != 0) {
              targetChar = co_await GetCharacteristicByDescriptorHandleAsync(device, instance_id);
         }
