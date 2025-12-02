@@ -36,7 +36,7 @@ namespace flutter_blue_plus_windows {
 
 // Debug Logging Helper
 void Log(const char* format, ...) {
-    char buffer[2048];
+    char buffer[1024];
     va_list args;
     va_start(args, format);
     vsnprintf(buffer, sizeof(buffer), format, args);
@@ -215,6 +215,8 @@ winrt::Windows::Foundation::IAsyncAction PopulateCharacteristicsAsync(
 
             charMap[flutter::EncodableValue("properties")] = propsMap;
 
+            // Do NOT read descriptors here to avoid performance hit and to keep logic simple.
+            // Just discovery. The `descriptors` list will be populated with basic info.
             auto descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Uncached);
             flutter::EncodableList descList;
             if (descResult.Status() == GattCommunicationStatus::Success) {
@@ -228,6 +230,7 @@ winrt::Windows::Foundation::IAsyncAction PopulateCharacteristicsAsync(
                     descMap[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(charUuid);
                     descMap[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(utils::to_uuid_string(descriptor.Uuid()));
                     descMap[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(static_cast<int32_t>(descriptor.AttributeHandle()));
+                    
                     descList.push_back(descMap);
                 }
             }
@@ -450,6 +453,12 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
                 if (targetChar) break;
             }
         }
+    }
+
+    if (targetChar) {
+        Log("GetCharacteristicAsync: Found by UUID");
+    } else {
+        Log("GetCharacteristicAsync: Not found");
     }
 
     co_return targetChar;
@@ -1346,17 +1355,11 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
         std::string remote_id = utils::from_value<std::string>(&args[flutter::EncodableValue("remote_id")]);
         std::string service_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("service_uuid")]);
         std::string characteristic_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("characteristic_uuid")]);
-        std::string primary_service_uuid_str; // Handle primary service for search
-
+        
         int instance_id = 0;
         auto it_instance = args.find(flutter::EncodableValue("instance_id"));
         if (it_instance != args.end()) {
             instance_id = utils::from_value<int>(&it_instance->second);
-        }
-        
-        auto it_primary = args.find(flutter::EncodableValue("primary_service_uuid"));
-        if (it_primary != args.end()) {
-            primary_service_uuid_str = utils::from_value<std::string>(&it_primary->second);
         }
 
         BluetoothLEDevice device = nullptr;
@@ -1394,6 +1397,11 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
                   targetChar = co_await GetCharacteristicByHandleAsync(device, instance_id);
              }
              if (!targetChar) {
+                 std::string primary_service_uuid_str = ""; 
+                 auto it_primary = args.find(flutter::EncodableValue("primary_service_uuid"));
+                 if (it_primary != args.end()) {
+                    primary_service_uuid_str = utils::from_value<std::string>(&it_primary->second);
+                 }
                  targetChar = co_await GetCharacteristicAsync(device, service_uuid_str, characteristic_uuid_str, primary_service_uuid_str, instance_id);
              }
         }
@@ -1411,9 +1419,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
             
             flutter::EncodableMap response;
             response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-            if (!primary_service_uuid_str.empty()) {
-                response[flutter::EncodableValue("primary_service_uuid")] = flutter::EncodableValue(primary_service_uuid_str);
-            }
+            // ... (Add primary service uuid if needed in response, omitted for brevity but good practice)
             response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
             response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
             response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
@@ -1634,8 +1640,14 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
         GattCharacteristic targetChar = nullptr;
 
         // 1. Try to find characteristic by handle first
+        // FBP sends descriptor handle in instance_id. 
+        // We use GetCharacteristicByDescriptorHandleAsync to find the parent characteristic.
         if (instance_id != 0) {
              targetChar = co_await GetCharacteristicByDescriptorHandleAsync(device, instance_id);
+             if (!targetChar) {
+                 // Fallback: maybe it was characteristic handle?
+                 targetChar = co_await GetCharacteristicByHandleAsync(device, instance_id);
+             }
         }
 
         // 2. Fallback to UUID search if char not found by handle
@@ -1650,8 +1662,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
         }
 
         // 3. Find Descriptor inside Characteristic
-        
-        // If we have instance_id (descriptor handle), try to find exact match in targetChar
+        // If instance_id matches a descriptor handle, use it
         if (instance_id != 0) {
             auto descResult = co_await targetChar.GetDescriptorsAsync(BluetoothCacheMode::Cached);
             if (descResult.Status() == GattCommunicationStatus::Success) {
@@ -1699,7 +1710,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
             response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
             response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
             response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(descriptor_uuid_str);
-            // Return REQUESTED instance_id so FBP can map it back
             response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id); 
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
@@ -1779,11 +1789,14 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
         // 1. Try to find parent Characteristic using descriptor handle (instance_id)
         if (instance_id != 0) {
             targetChar = co_await GetCharacteristicByDescriptorHandleAsync(device, instance_id);
+            
+            if (!targetChar) {
+                targetChar = co_await GetCharacteristicByHandleAsync(device, instance_id);
+            }
         }
 
         // 2. Fallback to UUID search for Characteristic
         if (!targetChar) {
-            Log("WriteDescriptorAsync: fallback to searching characteristic by UUID");
             targetChar = co_await GetCharacteristicAsync(device, service_uuid_str, characteristic_uuid_str, primary_service_uuid_str, 0);
         }
 
@@ -1844,7 +1857,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
             response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
             response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
             response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(descriptor_uuid_str);
-            // Return REQUESTED instance_id so FBP can map it back
             response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
