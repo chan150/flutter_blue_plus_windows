@@ -14,6 +14,7 @@
 #include <vector>
 #include <utility>
 #include <map>
+#include <atomic>
 
 namespace flutter_blue_plus_windows {
 
@@ -45,6 +46,8 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher watcher_{};
   winrt::event_token received_token_{};
   winrt::event_token stopped_token_{};
+  
+  std::atomic<bool> is_alive_{ true };
 
   // UI Thread context
   winrt::apartment_context ui_thread_;
@@ -107,6 +110,8 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
       std::string remote_id,
       const winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic& sender,
       const winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattValueChangedEventArgs& args);
+
+  winrt::fire_and_forget PeriodicConnectionCheck();
 
   std::string uint64_to_mac_string(uint64_t addr);
 };

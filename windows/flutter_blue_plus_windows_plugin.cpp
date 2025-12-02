@@ -525,9 +525,13 @@ FlutterBluePlusWindowsPlugin::FlutterBluePlusWindowsPlugin(flutter::PluginRegist
         { this, &FlutterBluePlusWindowsPlugin::OnAdvertisementReceived });
     stopped_token_ = watcher_.Stopped(
         { this, &FlutterBluePlusWindowsPlugin::OnAdvertisementStopped });
+    
+    // Start periodic check
+    PeriodicConnectionCheck();
 }
 
 FlutterBluePlusWindowsPlugin::~FlutterBluePlusWindowsPlugin() {
+    is_alive_ = false;
     watcher_.Stopped(stopped_token_);
     watcher_.Received(received_token_);
 }
@@ -1887,6 +1891,50 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
 
     co_await ui_thread_;
     result_ptr->Error("writeDescriptor", error_msg);
+}
+
+winrt::fire_and_forget FlutterBluePlusWindowsPlugin::PeriodicConnectionCheck() {
+    while (is_alive_) {
+        // Check every 2 seconds
+        co_await winrt::resume_after(winrt::Windows::Foundation::TimeSpan(20000000));
+
+        if (!is_alive_) co_return;
+        co_await ui_thread_;
+        if (!is_alive_) co_return;
+
+        for (auto it = connected_devices_.begin(); it != connected_devices_.end(); ) {
+            std::string remote_id = it->first;
+            auto device = it->second.as<BluetoothLEDevice>();
+            bool is_connected = false;
+
+            try {
+                if (device) {
+                    is_connected = (device.ConnectionStatus() == BluetoothConnectionStatus::Connected);
+                }
+            } catch (...) {
+                is_connected = false;
+            }
+
+            if (!is_connected) {
+                Log("PeriodicCheck: Removing stale connection for %s", remote_id.c_str());
+
+                // Notify Flutter
+                if (channel_) {
+                    flutter::EncodableMap connection_state;
+                    connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+                    connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); 
+                    channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
+                }
+
+                if (device) {
+                    try { device.Close(); } catch(...) {}
+                }
+                it = connected_devices_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
 }
 
 void FlutterBluePlusWindowsPlugin::HandleMethodCall(
