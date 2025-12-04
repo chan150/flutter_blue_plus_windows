@@ -277,15 +277,19 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> FindCharacterist
     int descriptor_handle,
     BluetoothCacheMode cacheMode)
 {
+    if (descriptor_handle == 0) co_return nullptr;
+
     // 1. Check characteristics in this service
     auto charsResult = co_await service.GetCharacteristicsAsync(cacheMode);
     if (charsResult.Status() == GattCommunicationStatus::Success) {
         for (auto c : charsResult.Characteristics()) {
              // Check descriptors of this characteristic
+             // WARNING: Using 'cacheMode' here is critical. If we use Cached and the descriptors aren't loaded, we miss it.
+             // If the parent call passed Uncached, we use Uncached here too.
              auto descResult = co_await c.GetDescriptorsAsync(cacheMode);
              if (descResult.Status() == GattCommunicationStatus::Success) {
                  for (auto d : descResult.Descriptors()) {
-                     if (descriptor_handle != 0 && static_cast<int32_t>(d.AttributeHandle()) == descriptor_handle) {
+                     if (static_cast<int32_t>(d.AttributeHandle()) == descriptor_handle) {
                          co_return c; // Found the parent characteristic!
                      }
                  }
@@ -309,7 +313,7 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> FindCharacterist
 
 winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristicByHandleAsync(
     BluetoothLEDevice device,
-    int instance_id) 
+    int instance_id)
 {
     Log("GetCharacteristicByHandleAsync: looking for handle %d", instance_id);
 
@@ -330,18 +334,19 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
             if (c) co_return c;
         }
     }
-    
+
     Log("GetCharacteristicByHandleAsync: not found");
     co_return nullptr;
 }
 
 winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristicByDescriptorHandleAsync(
     BluetoothLEDevice device,
-    int descriptor_handle) 
+    int descriptor_handle)
 {
+    if (descriptor_handle == 0) co_return nullptr;
     Log("GetCharacteristicByDescriptorHandleAsync: looking for desc handle %d", descriptor_handle);
 
-    // Try Cached
+    // Try Cached first
     auto servicesResult = co_await device.GetGattServicesAsync(BluetoothCacheMode::Cached);
     if (servicesResult.Status() == GattCommunicationStatus::Success) {
         for (auto service : servicesResult.Services()) {
@@ -350,7 +355,7 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
         }
     }
 
-    // Try Uncached
+    // Try Uncached (Deep search)
     servicesResult = co_await device.GetGattServicesAsync(BluetoothCacheMode::Uncached);
     if (servicesResult.Status() == GattCommunicationStatus::Success) {
         for (auto service : servicesResult.Services()) {
@@ -358,7 +363,7 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
             if (c) co_return c;
         }
     }
-    
+
     Log("GetCharacteristicByDescriptorHandleAsync: not found");
     co_return nullptr;
 }
@@ -372,7 +377,7 @@ winrt::Windows::Foundation::IAsyncOperation<GattCharacteristic> GetCharacteristi
     int instance_id)
 {
     GattCharacteristic targetChar = nullptr;
-    
+
     Log("GetCharacteristicAsync: svc=%s, chr=%s, primary=%s, handle=%d", service_uuid_str.c_str(), characteristic_uuid_str.c_str(), primary_service_uuid_str.c_str(), instance_id);
 
     if (!primary_service_uuid_str.empty()) {
@@ -539,16 +544,16 @@ FlutterBluePlusWindowsPlugin::~FlutterBluePlusWindowsPlugin() {
 void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
     const BluetoothLEAdvertisementWatcher&,
     const BluetoothLEAdvertisementReceivedEventArgs& args) {
-    
+
     // Switch to UI thread to handle the advertisement and channel method invocation safely
     [this, args]() -> winrt::fire_and_forget {
         try {
             co_await ui_thread_;
-            
+
             // if (args.IsScanResponse()) return;
             if (channel_) {
                 std::string remote_id = uint64_to_mac_string(args.BluetoothAddress());
-                
+
                 rssi_cache_[remote_id] = static_cast<int32_t>(args.RawSignalStrengthInDBm());
 
                 // Ensure entry exists in cache
@@ -561,7 +566,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
                 map[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
                 map[flutter::EncodableValue("rssi")] =
                     flutter::EncodableValue(static_cast<int32_t>(args.RawSignalStrengthInDBm()));
-                
+
                 // connectable (Merge: once 1, always 1)
                 int connectable = args.IsConnectable() ? 1 : 0;
                 if (connectable == 0) {
@@ -604,7 +609,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
                 // manufacturer_data (Merge)
                 if (advertisement.ManufacturerData().Size() > 0) {
                     flutter::EncodableMap msd_map; // Use default type or std::map<EncodableValue, EncodableValue>
-                    
+
                     // Retrieve existing map if it exists
                     auto it = map.find(flutter::EncodableValue("manufacturer_data"));
                     if (it != map.end()) {
@@ -614,7 +619,7 @@ void FlutterBluePlusWindowsPlugin::OnAdvertisementReceived(
                     }
 
                     for (const auto& msd : advertisement.ManufacturerData()) {
-                        msd_map[flutter::EncodableValue(static_cast<int64_t>(msd.CompanyId()))] = 
+                        msd_map[flutter::EncodableValue(static_cast<int64_t>(msd.CompanyId()))] =
                             flutter::EncodableValue(utils::to_vector(msd.Data()));
                     }
                     map[flutter::EncodableValue("manufacturer_data")] = msd_map;
@@ -729,7 +734,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetSystemDevicesAsync(std::
         }
 
         response[flutter::EncodableValue("devices")] = deviceList;
-        
+
         co_await ui_thread_;
         result->Success(flutter::EncodableValue(response));
     }
@@ -774,7 +779,7 @@ fire_and_forget GetAdapterStateAsync(std::unique_ptr<flutter::MethodResult<flutt
         flutter::EncodableMap response = {};
         response[flutter::EncodableValue("adapter_state")] = flutter::EncodableValue(adapter_state);
         response[flutter::EncodableValue("adapter_name")] = flutter::EncodableValue(adapter_name);
-        
+
         co_await ui_thread;
         result->Success(flutter::EncodableValue(response));
     }
@@ -784,7 +789,7 @@ fire_and_forget GetAdapterStateAsync(std::unique_ptr<flutter::MethodResult<flutt
     catch (...) {
         error_msg = "Unknown error occurred";
     }
-    
+
     if (!error_msg.empty()) {
         co_await ui_thread;
         result->Error("getAdapterState", error_msg);
@@ -794,7 +799,7 @@ fire_and_forget GetAdapterStateAsync(std::unique_ptr<flutter::MethodResult<flutt
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
     std::string remote_id,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-    
+
     std::string error_msg;
     try {
         uint64_t bluetoothAddress = utils::mac_to_uint64(remote_id);
@@ -807,7 +812,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
              co_await ui_thread_;
              flutter::EncodableMap connection_state;
              connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-             connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1); 
+             connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1);
              channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
              result->Success(flutter::EncodableValue(true));
              co_return;
@@ -823,15 +828,15 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
             }
 
             device.ConnectionStatusChanged({ this, &FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged });
-            
+
             // Trigger connection by getting GATT services
             // First try cached
             auto gatt_result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Cached);
-            
+
             // If cached failed OR cached success but not connected -> try uncached to force connection
-            if (gatt_result.Status() != GattCommunicationStatus::Success || 
+            if (gatt_result.Status() != GattCommunicationStatus::Success ||
                 device.ConnectionStatus() != BluetoothConnectionStatus::Connected) {
-                
+
                 Log("ConnectAsync: Trying Uncached connection...");
                 // Retry with Uncached to force physical connection
                 gatt_result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Uncached);
@@ -846,7 +851,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
                  if (it_connected == connected_devices_.end()) {
                      connected_devices_.emplace_back(remote_id, device);
                  }
-                 
+
                  // Remove from connecting list
                  auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
                         [&](const auto& pair) { return pair.first == remote_id; });
@@ -857,7 +862,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
                  // Send Connected Event explicitly to ensure Dart state updates
                  flutter::EncodableMap connection_state;
                  connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-                 connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1); 
+                 connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1);
                  channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
 
                  result->Success(flutter::EncodableValue(true));
@@ -866,7 +871,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
                  co_await ui_thread_;
                  auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(),
                     [&](const auto& pair) { return pair.first == remote_id; });
-                 
+
                  if (it_connected != connected_devices_.end()) {
                      auto d = it_connected->second.as<BluetoothLEDevice>();
                      if (d) d.Close();
@@ -874,7 +879,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
 
                      flutter::EncodableMap connection_state;
                      connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-                     connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0); 
+                     connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(0);
                      channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
                  }
 
@@ -917,7 +922,7 @@ std::string FlutterBluePlusWindowsPlugin::uint64_to_mac_string(uint64_t addr) {
 void FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged(
     const BluetoothLEDevice& device,
     const IInspectable&) {
-    
+
     // Spawn a fire_and_forget coroutine to safely switch to UI thread before invoking method channel
     [&](BluetoothLEDevice d) -> winrt::fire_and_forget {
         // Switch to UI thread
@@ -932,7 +937,7 @@ void FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged(
             // Check if already in connected list
              auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(),
                 [&](const auto& pair) { return pair.first == remote_id; });
-             
+
              if (it_connected == connected_devices_.end()) {
                   auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
                     [&](const auto& pair) { return pair.first == remote_id; });
@@ -942,12 +947,12 @@ void FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged(
                        currently_connecting_devices_.erase(it_connecting);
                   }
              }
-            
+
             connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1); // connected
             channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
 
         } else if (d.ConnectionStatus() == BluetoothConnectionStatus::Disconnected) {
-           
+
             auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(),
                 [&](const auto& pair) { return pair.first == remote_id; });
 
@@ -964,7 +969,7 @@ void FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged(
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
     std::string remote_id,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-    
+
     auto result_ptr = std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(std::move(result));
     std::string error_msg;
 
@@ -1005,7 +1010,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
              serviceMap[flutter::EncodableValue("characteristics")] = *charsList;
 
              servicesList.push_back(serviceMap);
-             
+
              // Process Included Services
              auto includedResult = co_await service.GetIncludedServicesAsync(BluetoothCacheMode::Uncached);
              if (includedResult.Status() == GattCommunicationStatus::Success) {
@@ -1015,11 +1020,11 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
                      includedMap[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
                      includedMap[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(includedUuid);
                      includedMap[flutter::EncodableValue("primary_service_uuid")] = flutter::EncodableValue(serviceUuid);
-                     
+
                      auto includedCharsList = std::make_shared<flutter::EncodableList>();
                      co_await PopulateCharacteristicsAsync(includedService, remote_id, serviceUuid, includedCharsList);
                      includedMap[flutter::EncodableValue("characteristics")] = *includedCharsList;
-                     
+
                      servicesList.push_back(includedMap);
                  }
              }
@@ -1035,7 +1040,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
         co_await ui_thread_;
         channel_->InvokeMethod("OnDiscoveredServices", std::make_unique<flutter::EncodableValue>(response));
         result_ptr->Success(flutter::EncodableValue(true));
-        
+
         co_return;
 
     } catch (const std::exception& e) {
@@ -1072,59 +1077,52 @@ void FlutterBluePlusWindowsPlugin::OnCharacteristicValueChanged(
         response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
         response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
         response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
-        
+
         channel_->InvokeMethod("OnCharacteristicReceived", std::make_unique<flutter::EncodableValue>(response));
     }();
 }
 
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
     std::shared_ptr<flutter::EncodableMap> args_ptr) {
-    
-    // Move to background thread immediately
-    co_await winrt::resume_background();
 
+    co_await winrt::resume_background();
     flutter::EncodableMap& args = *args_ptr;
-    
-    // Variables for Event
-    std::string remote_id;
-    std::string service_uuid_str;
-    std::string characteristic_uuid_str;
+
+    std::string remote_id = utils::from_value<std::string>(&args[flutter::EncodableValue("remote_id")]);
+    std::string service_uuid_hint = utils::from_value<std::string>(&args[flutter::EncodableValue("service_uuid")]);
+    std::string characteristic_uuid_hint = utils::from_value<std::string>(&args[flutter::EncodableValue("characteristic_uuid")]);
     std::string primary_service_uuid_str;
+
+    auto it_primary = args.find(flutter::EncodableValue("primary_service_uuid"));
+    if (it_primary != args.end()) {
+        primary_service_uuid_str = utils::from_value<std::string>(&it_primary->second);
+    }
+
     int instance_id = 0;
-    bool success_event = false;
+    auto it_instance = args.find(flutter::EncodableValue("instance_id"));
+    if (it_instance != args.end()) {
+        instance_id = utils::from_value<int>(&it_instance->second);
+    }
+
+    bool enable = utils::from_value<bool>(&args[flutter::EncodableValue("enable")]);
+    bool force_indications = false;
+    auto it_force = args.find(flutter::EncodableValue("force_indications"));
+    if (it_force != args.end()) {
+        force_indications = utils::from_value<bool>(&it_force->second);
+    }
+
     std::string error_string = "Unknown Error";
+    bool success_event = false;
     std::vector<uint8_t> return_value = {0x00, 0x00};
     GattCharacteristic targetChar = nullptr;
-    bool enable = false;
-    bool force_indications = false;
+
+    std::string actual_service_uuid = service_uuid_hint;
+    std::string actual_char_uuid = characteristic_uuid_hint;
 
     try {
-        remote_id = utils::from_value<std::string>(&args[flutter::EncodableValue("remote_id")]);
-        service_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("service_uuid")]);
-        characteristic_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("characteristic_uuid")]);
-        
-        auto it_primary = args.find(flutter::EncodableValue("primary_service_uuid"));
-        if (it_primary != args.end()) {
-            primary_service_uuid_str = utils::from_value<std::string>(&it_primary->second);
-        }
-
-        auto it_instance = args.find(flutter::EncodableValue("instance_id"));
-        if (it_instance != args.end()) {
-            instance_id = utils::from_value<int>(&it_instance->second);
-        }
-
-        enable = utils::from_value<bool>(&args[flutter::EncodableValue("enable")]);
-        auto it_force = args.find(flutter::EncodableValue("force_indications"));
-        if (it_force != args.end()) {
-            force_indications = utils::from_value<bool>(&it_force->second);
-        }
-
-        Log("SetNotifyValueAsync: %s, svc: %s, chr: %s, inst: %d, enable: %d", 
-            remote_id.c_str(), service_uuid_str.c_str(), characteristic_uuid_str.c_str(), instance_id, enable);
-
         BluetoothLEDevice device = nullptr;
-        
-        co_await ui_thread_; // Switch to UI thread to safely access connected_devices_
+
+        co_await ui_thread_;
         {
              auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
                 [&](const auto& pair) { return pair.first == remote_id; });
@@ -1132,52 +1130,48 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
                  device = it->second.as<BluetoothLEDevice>();
              }
         }
-        co_await winrt::resume_background(); // Switch back to background
+        co_await winrt::resume_background();
 
         if (!device) {
-             Log("SetNotifyValueAsync: Device not connected");
              error_string = "Device not connected";
              goto send_event;
         }
 
-        // Unique key for storing subscription info
-        std::string token_key = remote_id + ":" + service_uuid_str + ":" + characteristic_uuid_str + ":" + std::to_string(instance_id);
-
-        // Optimized Search by Handle (instance_id)
         if (instance_id != 0) {
             targetChar = co_await GetCharacteristicByHandleAsync(device, instance_id);
         }
 
-        // Fallback to UUID search if handle matching failed (legacy/fallback)
         if (!targetChar) {
-            Log("SetNotifyValueAsync: Characteristic not found by handle, trying UUIDs...");
-            targetChar = co_await GetCharacteristicAsync(device, service_uuid_str, characteristic_uuid_str, primary_service_uuid_str, instance_id);
+            targetChar = co_await GetCharacteristicAsync(device, service_uuid_hint, characteristic_uuid_hint, primary_service_uuid_str, instance_id);
         }
 
         if (!targetChar) {
-             Log("SetNotifyValueAsync: Characteristic not found");
              error_string = "Characteristic not found";
              goto send_event;
         }
 
+        actual_service_uuid = utils::to_uuid_string(targetChar.Service().Uuid());
+        actual_char_uuid = utils::to_uuid_string(targetChar.Uuid());
+
+        std::string token_key = remote_id + ":" + actual_service_uuid + ":" + actual_char_uuid + ":" + std::to_string(instance_id);
+
         if (enable) {
             GattClientCharacteristicConfigurationDescriptorValue cccdValue = GattClientCharacteristicConfigurationDescriptorValue::None;
             auto props = targetChar.CharacteristicProperties();
-            
+
             bool canNotify = (static_cast<uint32_t>(props) & static_cast<uint32_t>(GattCharacteristicProperties::Notify)) != 0;
             bool canIndicate = (static_cast<uint32_t>(props) & static_cast<uint32_t>(GattCharacteristicProperties::Indicate)) != 0;
 
             if (force_indications && canIndicate) {
                 cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Indicate;
-                return_value = {0x02, 0x00}; // Indicate
+                return_value = {0x02, 0x00};
             } else if (canNotify) {
                 cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Notify;
-                return_value = {0x01, 0x00}; // Notify
+                return_value = {0x01, 0x00};
             } else if (canIndicate) {
                 cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Indicate;
-                return_value = {0x02, 0x00}; // Indicate
+                return_value = {0x02, 0x00};
             } else {
-                 Log("SetNotifyValueAsync: Notify/Indicate not supported");
                  error_string = "Notify/Indicate not supported";
                  goto send_event;
             }
@@ -1185,65 +1179,42 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
             GattCommunicationStatus status = GattCommunicationStatus::ProtocolError;
             try {
                 status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(cccdValue);
-            } catch (...) {
-                Log("SetNotifyValueAsync: WriteClientCharacteristicConfigurationDescriptorAsync exception");
-            }
+            } catch (...) {}
 
             if (status != GattCommunicationStatus::Success) {
-                Log("SetNotifyValueAsync: Failed to write CCCD via helper (%d), trying manual write...", status);
-                
                 try {
-                    // Manual write fallback
                     GattDescriptor cccdDescriptor = nullptr;
-                    winrt::guid cccdUuid = utils::parse_uuid("2902");
-
-                    auto descResult = co_await targetChar.GetDescriptorsForUuidAsync(cccdUuid, BluetoothCacheMode::Cached);
-                    if (descResult.Status() != GattCommunicationStatus::Success) {
-                         descResult = co_await targetChar.GetDescriptorsForUuidAsync(cccdUuid, BluetoothCacheMode::Uncached);
-                    }
-                    
-                    if (descResult.Status() == GattCommunicationStatus::Success && descResult.Descriptors().Size() > 0) {
-                        cccdDescriptor = descResult.Descriptors().GetAt(0);
+                    auto allDescs = co_await targetChar.GetDescriptorsAsync(BluetoothCacheMode::Uncached);
+                    if (allDescs.Status() == GattCommunicationStatus::Success) {
+                        for (auto d : allDescs.Descriptors()) {
+                            if (utils::to_uuid_string(d.Uuid()) == "2902") {
+                                cccdDescriptor = d;
+                                break;
+                            }
+                        }
                     }
 
                     if (cccdDescriptor) {
                         auto writer = winrt::Windows::Storage::Streams::DataWriter();
                         writer.ByteOrder(winrt::Windows::Storage::Streams::ByteOrder::LittleEndian);
-                        
-                        uint16_t val = 0;
-                        if (cccdValue == GattClientCharacteristicConfigurationDescriptorValue::Notify) val = 1;
-                        else if (cccdValue == GattClientCharacteristicConfigurationDescriptorValue::Indicate) val = 2;
-                        
+                        uint16_t val = (cccdValue == GattClientCharacteristicConfigurationDescriptorValue::Indicate) ? 2 : 1;
                         writer.WriteUInt16(val);
-
                         auto writeResult = co_await cccdDescriptor.WriteValueWithResultAsync(writer.DetachBuffer());
                         status = writeResult.Status();
-                        Log("SetNotifyValueAsync: Manual CCCD write status: %d", status);
-                    } else {
-                        Log("SetNotifyValueAsync: CCCD Descriptor not found manually");
                     }
-                } catch(...) {
-                    Log("SetNotifyValueAsync: Manual CCCD write exception");
-                }
+                } catch(...) {}
             }
 
-            // [FIX] Ignore CCCD write error for "Service Changed" characteristic (0x2A05)
-            // Windows OS manages this characteristic and often blocks direct writes.
-            if (status != GattCommunicationStatus::Success && characteristic_uuid_str == "2a05") {
-                Log("SetNotifyValueAsync: Ignoring CCCD write failure for Service Changed (2A05). Assuming OS handled.");
+            if (status != GattCommunicationStatus::Success && actual_char_uuid == "2a05") {
                 status = GattCommunicationStatus::Success;
             }
 
             if (status == GattCommunicationStatus::Success) {
-                Log("SetNotifyValueAsync: Write CCCD success");
                 co_await ui_thread_;
-                
-                // Remove old subscription if exists
+
                 auto it = subscribed_characteristics_.find(token_key);
                 if (it != subscribed_characteristics_.end()) {
-                     try {
-                        it->second.characteristic.ValueChanged(it->second.token);
-                     } catch(...) {}
+                     try { it->second.characteristic.ValueChanged(it->second.token); } catch(...) {}
                      subscribed_characteristics_.erase(it);
                 }
 
@@ -1251,12 +1222,11 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
                     this->OnCharacteristicValueChanged(remote_id, sender, args);
                 });
                 subscribed_characteristics_[token_key] = { targetChar, token };
-                
+
                 success_event = true;
                 error_string = "GATT_SUCCESS";
             } else {
-                Log("SetNotifyValueAsync: Write CCCD failed final: %d", status);
-                error_string = "Write CCCD failed";
+                error_string = "Write CCCD failed status: " + std::to_string((int)status);
             }
         } else {
              // Disable
@@ -1264,65 +1234,52 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(
              GattCommunicationStatus status = GattCommunicationStatus::ProtocolError;
              try {
                 status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None);
-             } catch(...) {
-                 Log("SetNotifyValueAsync: Disable CCCD exception");
-             }
+             } catch(...) {}
 
              if (status != GattCommunicationStatus::Success) {
                  try {
-                     // Try manual disable
                      GattDescriptor cccdDescriptor = nullptr;
-                     winrt::guid cccdUuid = utils::parse_uuid("2902");
-                     auto descResult = co_await targetChar.GetDescriptorsForUuidAsync(cccdUuid, BluetoothCacheMode::Cached);
-                     if (descResult.Status() != GattCommunicationStatus::Success) {
-                          descResult = co_await targetChar.GetDescriptorsForUuidAsync(cccdUuid, BluetoothCacheMode::Uncached);
+                     auto allDescs = co_await targetChar.GetDescriptorsAsync(BluetoothCacheMode::Uncached);
+                     if (allDescs.Status() == GattCommunicationStatus::Success) {
+                         for (auto d : allDescs.Descriptors()) {
+                             if (utils::to_uuid_string(d.Uuid()) == "2902") {
+                                 cccdDescriptor = d;
+                                 break;
+                             }
+                         }
                      }
-                     if (descResult.Status() == GattCommunicationStatus::Success && descResult.Descriptors().Size() > 0) {
-                         cccdDescriptor = descResult.Descriptors().GetAt(0);
+                     if (cccdDescriptor) {
                          auto writer = winrt::Windows::Storage::Streams::DataWriter();
                          writer.ByteOrder(winrt::Windows::Storage::Streams::ByteOrder::LittleEndian);
                          writer.WriteUInt16(0);
                          auto writeResult = co_await cccdDescriptor.WriteValueWithResultAsync(writer.DetachBuffer());
                          status = writeResult.Status();
                      }
-                 } catch (...) {
-                     Log("SetNotifyValueAsync: Manual disable CCCD exception");
-                 }
+                 } catch (...) {}
              }
 
-             // [FIX] Ignore CCCD write error for "Service Changed" characteristic (0x2A05) on Disable too
-             if (status != GattCommunicationStatus::Success && characteristic_uuid_str == "2a05") {
-                Log("SetNotifyValueAsync: Ignoring CCCD disable failure for Service Changed (2A05).");
+             if (status != GattCommunicationStatus::Success && actual_char_uuid == "2a05") {
                 status = GattCommunicationStatus::Success;
              }
 
              co_await ui_thread_;
              auto it = subscribed_characteristics_.find(token_key);
              if (it != subscribed_characteristics_.end()) {
-                 try {
-                    it->second.characteristic.ValueChanged(it->second.token);
-                 } catch(...) {}
+                 try { it->second.characteristic.ValueChanged(it->second.token); } catch(...) {}
                  subscribed_characteristics_.erase(it);
              }
 
              if (status == GattCommunicationStatus::Success) {
-                Log("SetNotifyValueAsync: Disable CCCD success");
                 success_event = true;
                 error_string = "GATT_SUCCESS";
              } else {
-                 Log("SetNotifyValueAsync: Disable CCCD failed: %d", status);
                  error_string = "Disable CCCD failed";
              }
         }
-        
-    } catch (const winrt::hresult_error& ex) {
-        Log("SetNotifyValueAsync: WinRT Exception: 0x%08X %ls", ex.code(), ex.message().c_str());
-        error_string = "WinRT Error: " + utils::to_string(ex.message());
+
     } catch (const std::exception& ex) {
-        Log("SetNotifyValueAsync: Std Exception: %s", ex.what());
-        error_string = std::string("Std Error: ") + ex.what();
+        error_string = ex.what();
     } catch (...) {
-        Log("SetNotifyValueAsync: Unknown Exception occurred");
         error_string = "Unknown Exception occurred";
     }
 
@@ -1333,11 +1290,11 @@ send_event:
     if (!primary_service_uuid_str.empty()) {
             response[flutter::EncodableValue("primary_service_uuid")] = flutter::EncodableValue(primary_service_uuid_str);
     }
-    response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
-    response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
-    response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue("2902"); 
+    response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(actual_service_uuid);
+    response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(actual_char_uuid);
+    response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue("2902");
     response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
-    
+
     response[flutter::EncodableValue("value")] = flutter::EncodableValue(return_value);
     response[flutter::EncodableValue("success")] = flutter::EncodableValue(success_event ? 1 : 0);
     response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(success_event ? 0 : 1);
@@ -1351,7 +1308,7 @@ send_event:
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
     flutter::EncodableMap args,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-    
+
     auto result_ptr = std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(std::move(result));
     std::string error_msg;
 
@@ -1359,7 +1316,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
         std::string remote_id = utils::from_value<std::string>(&args[flutter::EncodableValue("remote_id")]);
         std::string service_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("service_uuid")]);
         std::string characteristic_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("characteristic_uuid")]);
-        
+
         int instance_id = 0;
         auto it_instance = args.find(flutter::EncodableValue("instance_id"));
         if (it_instance != args.end()) {
@@ -1401,7 +1358,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
                   targetChar = co_await GetCharacteristicByHandleAsync(device, instance_id);
              }
              if (!targetChar) {
-                 std::string primary_service_uuid_str = ""; 
+                 std::string primary_service_uuid_str = "";
                  auto it_primary = args.find(flutter::EncodableValue("primary_service_uuid"));
                  if (it_primary != args.end()) {
                     primary_service_uuid_str = utils::from_value<std::string>(&it_primary->second);
@@ -1417,10 +1374,10 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
         }
 
         auto readResult = co_await targetChar.ReadValueAsync(BluetoothCacheMode::Uncached);
-        
+
         if (readResult.Status() == GattCommunicationStatus::Success) {
             std::vector<uint8_t> value = utils::to_vector(readResult.Value());
-            
+
             flutter::EncodableMap response;
             response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
             // ... (Add primary service uuid if needed in response, omitted for brevity but good practice)
@@ -1431,7 +1388,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
             response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
             response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
-            
+
             co_await ui_thread_;
             channel_->InvokeMethod("OnCharacteristicReceived", std::make_unique<flutter::EncodableValue>(response));
             result_ptr->Success(flutter::EncodableValue(true));
@@ -1446,7 +1403,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
             co_await ui_thread_;
             result_ptr->Error("readCharacteristic", error_msg);
         }
-        
+
         co_return;
 
     } catch (const std::exception& e) {
@@ -1462,7 +1419,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadCharacteristicAsync(
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteCharacteristicAsync(
     flutter::EncodableMap args,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-    
+
     auto result_ptr = std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(std::move(result));
     std::string error_msg;
 
@@ -1471,7 +1428,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteCharacteristicAsync(
         std::string service_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("service_uuid")]);
         std::string characteristic_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("characteristic_uuid")]);
         std::string primary_service_uuid_str;
-        
+
         int instance_id = 0;
         auto it_instance = args.find(flutter::EncodableValue("instance_id"));
         if (it_instance != args.end()) {
@@ -1527,12 +1484,12 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteCharacteristicAsync(
         auto buffer = writer.DetachBuffer();
 
         GattWriteOption option = (write_type == 1) ? GattWriteOption::WriteWithoutResponse : GattWriteOption::WriteWithResponse;
-        
+
         auto writeResult = co_await targetChar.WriteValueWithResultAsync(buffer, option);
-        
+
         if (writeResult.Status() == GattCommunicationStatus::Success) {
             co_await ui_thread_;
-            
+
             flutter::EncodableMap response;
             response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
             if (!primary_service_uuid_str.empty()) {
@@ -1556,9 +1513,9 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteCharacteristicAsync(
                     error_msg += " (ATT Error: " + std::to_string(err.Value()) + ")";
                 }
             }
-            
+
             co_await ui_thread_;
-            
+
             flutter::EncodableMap response;
             response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
             if (!primary_service_uuid_str.empty()) {
@@ -1569,7 +1526,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteCharacteristicAsync(
             response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(0);
-            
+
             int error_code = static_cast<int>(writeResult.Status());
             if (writeResult.Status() == GattCommunicationStatus::ProtocolError) {
                  auto err = writeResult.ProtocolError();
@@ -1577,16 +1534,16 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteCharacteristicAsync(
                      error_code = static_cast<int>(err.Value());
                  }
             }
-            
+
             response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(error_code);
             response[flutter::EncodableValue("error_string")] = flutter::EncodableValue(error_msg);
 
             channel_->InvokeMethod("OnCharacteristicWritten", std::make_unique<flutter::EncodableValue>(response));
-            
+
             // 성공으로 반환해야 Dart에서 예외를 발생시키지 않고 이벤트로 에러 처리 가능
             result_ptr->Success(flutter::EncodableValue(true));
         }
-        
+
         co_return;
 
     } catch (const std::exception& e) {
@@ -1602,28 +1559,28 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteCharacteristicAsync(
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
     flutter::EncodableMap args,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-    
+
     auto result_ptr = std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(std::move(result));
     std::string error_msg;
 
     try {
         std::string remote_id = utils::from_value<std::string>(&args[flutter::EncodableValue("remote_id")]);
-        std::string service_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("service_uuid")]);
-        std::string characteristic_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("characteristic_uuid")]);
-        std::string descriptor_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("descriptor_uuid")]);
+        std::string service_uuid_hint = utils::from_value<std::string>(&args[flutter::EncodableValue("service_uuid")]);
+        std::string characteristic_uuid_hint = utils::from_value<std::string>(&args[flutter::EncodableValue("characteristic_uuid")]);
+        std::string descriptor_uuid_hint = utils::from_value<std::string>(&args[flutter::EncodableValue("descriptor_uuid")]);
+
         std::string primary_service_uuid_str;
-        
-        int instance_id = 0; 
+        auto it_primary = args.find(flutter::EncodableValue("primary_service_uuid"));
+        if (it_primary != args.end()) {
+            primary_service_uuid_str = utils::from_value<std::string>(&it_primary->second);
+        }
+
+        int instance_id = 0;
         auto it_instance = args.find(flutter::EncodableValue("instance_id"));
         if (it_instance != args.end()) {
             instance_id = utils::from_value<int>(&it_instance->second);
         }
 
-        auto it_primary = args.find(flutter::EncodableValue("primary_service_uuid"));
-        if (it_primary != args.end()) {
-            primary_service_uuid_str = utils::from_value<std::string>(&it_primary->second);
-        }
-        
         BluetoothLEDevice device = nullptr;
         {
              auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(),
@@ -1643,20 +1600,15 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
         GattDescriptor targetDesc = nullptr;
         GattCharacteristic targetChar = nullptr;
 
-        // 1. Try to find characteristic by handle first
-        // FBP sends descriptor handle in instance_id. 
-        // We use GetCharacteristicByDescriptorHandleAsync to find the parent characteristic.
         if (instance_id != 0) {
              targetChar = co_await GetCharacteristicByDescriptorHandleAsync(device, instance_id);
              if (!targetChar) {
-                 // Fallback: maybe it was characteristic handle?
                  targetChar = co_await GetCharacteristicByHandleAsync(device, instance_id);
              }
         }
 
-        // 2. Fallback to UUID search if char not found by handle
         if (!targetChar) {
-            targetChar = co_await GetCharacteristicAsync(device, service_uuid_str, characteristic_uuid_str, primary_service_uuid_str, 0);
+            targetChar = co_await GetCharacteristicAsync(device, service_uuid_hint, characteristic_uuid_hint, primary_service_uuid_str, 0);
         }
 
         if (!targetChar) {
@@ -1665,8 +1617,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
             co_return;
         }
 
-        // 3. Find Descriptor inside Characteristic
-        // If instance_id matches a descriptor handle, use it
         if (instance_id != 0) {
             auto descResult = co_await targetChar.GetDescriptorsAsync(BluetoothCacheMode::Cached);
             if (descResult.Status() == GattCommunicationStatus::Success) {
@@ -1677,7 +1627,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
                     }
                 }
             }
-             if (!targetDesc) {
+            if (!targetDesc) {
                 descResult = co_await targetChar.GetDescriptorsAsync(BluetoothCacheMode::Uncached);
                  if (descResult.Status() == GattCommunicationStatus::Success) {
                     for (auto d : descResult.Descriptors()) {
@@ -1690,9 +1640,8 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
             }
         }
 
-        // If no handle match (or handle was 0), try UUID match
         if (!targetDesc) {
-             targetDesc = co_await GetDescriptorAsync(targetChar, descriptor_uuid_str);
+             targetDesc = co_await GetDescriptorAsync(targetChar, descriptor_uuid_hint);
         }
 
         if (!targetDesc) {
@@ -1702,22 +1651,28 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
         }
 
         auto readResult = co_await targetDesc.ReadValueAsync(BluetoothCacheMode::Uncached);
-        
+
         if (readResult.Status() == GattCommunicationStatus::Success) {
             std::vector<uint8_t> value = utils::to_vector(readResult.Value());
-            
+
+            std::string actual_service_uuid = utils::to_uuid_string(targetChar.Service().Uuid());
+            std::string actual_char_uuid = utils::to_uuid_string(targetChar.Uuid());
+            std::string actual_desc_uuid = utils::to_uuid_string(targetDesc.Uuid());
+
             flutter::EncodableMap response;
             response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+
             if (!primary_service_uuid_str.empty()) {
                 response[flutter::EncodableValue("primary_service_uuid")] = flutter::EncodableValue(primary_service_uuid_str);
             }
-            response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
-            response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
-            response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(descriptor_uuid_str);
-            response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id); 
+
+            response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(actual_service_uuid);
+            response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(actual_char_uuid);
+            response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(actual_desc_uuid);
+            response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
-            
+
             co_await ui_thread_;
             channel_->InvokeMethod("OnDescriptorRead", std::make_unique<flutter::EncodableValue>(response));
             result_ptr->Success(flutter::EncodableValue(true));
@@ -1732,7 +1687,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
             co_await ui_thread_;
             result_ptr->Error("readDescriptor", error_msg);
         }
-        
+
         co_return;
 
     } catch (const std::exception& e) {
@@ -1748,27 +1703,27 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
     flutter::EncodableMap args,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-    
+
     auto result_ptr = std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(std::move(result));
     std::string error_msg;
 
     try {
         std::string remote_id = utils::from_value<std::string>(&args[flutter::EncodableValue("remote_id")]);
-        std::string service_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("service_uuid")]);
-        std::string characteristic_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("characteristic_uuid")]);
-        std::string descriptor_uuid_str = utils::from_value<std::string>(&args[flutter::EncodableValue("descriptor_uuid")]);
+        std::string service_uuid_hint = utils::from_value<std::string>(&args[flutter::EncodableValue("service_uuid")]);
+        std::string characteristic_uuid_hint = utils::from_value<std::string>(&args[flutter::EncodableValue("characteristic_uuid")]);
+        std::string descriptor_uuid_hint = utils::from_value<std::string>(&args[flutter::EncodableValue("descriptor_uuid")]);
         std::vector<uint8_t> value = utils::from_value<std::vector<uint8_t>>(&args[flutter::EncodableValue("value")]);
+
         std::string primary_service_uuid_str;
-
-        int instance_id = 0; 
-        auto it_instance = args.find(flutter::EncodableValue("instance_id"));
-        if (it_instance != args.end()) {
-            instance_id = utils::from_value<int>(&it_instance->second);
-        }
-
         auto it_primary = args.find(flutter::EncodableValue("primary_service_uuid"));
         if (it_primary != args.end()) {
             primary_service_uuid_str = utils::from_value<std::string>(&it_primary->second);
+        }
+
+        int instance_id = 0;
+        auto it_instance = args.find(flutter::EncodableValue("instance_id"));
+        if (it_instance != args.end()) {
+            instance_id = utils::from_value<int>(&it_instance->second);
         }
 
         BluetoothLEDevice device = nullptr;
@@ -1790,18 +1745,15 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
         GattDescriptor targetDesc = nullptr;
         GattCharacteristic targetChar = nullptr;
 
-        // 1. Try to find parent Characteristic using descriptor handle (instance_id)
         if (instance_id != 0) {
             targetChar = co_await GetCharacteristicByDescriptorHandleAsync(device, instance_id);
-            
             if (!targetChar) {
                 targetChar = co_await GetCharacteristicByHandleAsync(device, instance_id);
             }
         }
 
-        // 2. Fallback to UUID search for Characteristic
         if (!targetChar) {
-            targetChar = co_await GetCharacteristicAsync(device, service_uuid_str, characteristic_uuid_str, primary_service_uuid_str, 0);
+            targetChar = co_await GetCharacteristicAsync(device, service_uuid_hint, characteristic_uuid_hint, primary_service_uuid_str, 0);
         }
 
         if (!targetChar) {
@@ -1810,7 +1762,6 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
             co_return;
         }
 
-        // 3. Find Descriptor within Characteristic (by Handle first, then UUID)
          if (instance_id != 0) {
             auto descResult = co_await targetChar.GetDescriptorsAsync(BluetoothCacheMode::Cached);
             if (descResult.Status() == GattCommunicationStatus::Success) {
@@ -1835,7 +1786,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
         }
 
         if (!targetDesc) {
-            targetDesc = co_await GetDescriptorAsync(targetChar, descriptor_uuid_str);
+            targetDesc = co_await GetDescriptorAsync(targetChar, descriptor_uuid_hint);
         }
 
         if (!targetDesc) {
@@ -1847,20 +1798,24 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(
         auto writer = winrt::Windows::Storage::Streams::DataWriter();
         writer.WriteBytes(value);
         auto buffer = writer.DetachBuffer();
-        
+
         auto writeResult = co_await targetDesc.WriteValueWithResultAsync(buffer);
-        
+
         if (writeResult.Status() == GattCommunicationStatus::Success) {
+            std::string actual_service_uuid = utils::to_uuid_string(targetChar.Service().Uuid());
+            std::string actual_char_uuid = utils::to_uuid_string(targetChar.Uuid());
+            std::string actual_desc_uuid = utils::to_uuid_string(targetDesc.Uuid());
+
             co_await ui_thread_;
-            
+
             flutter::EncodableMap response;
             response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
             if (!primary_service_uuid_str.empty()) {
                 response[flutter::EncodableValue("primary_service_uuid")] = flutter::EncodableValue(primary_service_uuid_str);
             }
-            response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(service_uuid_str);
-            response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(characteristic_uuid_str);
-            response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(descriptor_uuid_str);
+            response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(actual_service_uuid);
+            response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(actual_char_uuid);
+            response[flutter::EncodableValue("descriptor_uuid")] = flutter::EncodableValue(actual_desc_uuid);
             response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(instance_id);
             response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
             response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
