@@ -359,7 +359,6 @@ FlutterBluePlusWindowsPlugin::PopulateCharacteristicsAsync(
     std::string primaryServiceUuid,
     std::shared_ptr<flutter::EncodableList> outList)
 {
-    // Use Cached mode first for characteristics to speed up discovery
     auto charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Cached);
     if (charsResult.Status() != GattCommunicationStatus::Success || charsResult.Characteristics().Size() == 0) {
         charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
@@ -397,7 +396,6 @@ FlutterBluePlusWindowsPlugin::PopulateCharacteristicsAsync(
 
             charMap[flutter::EncodableValue("properties")] = propsMap;
 
-            // Use Cached for descriptors during mass discovery to avoid catastrophic performance issues
             auto descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Cached);
             if (descResult.Status() != GattCommunicationStatus::Success) {
                  descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Uncached);
@@ -646,8 +644,10 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetSystemDevicesAsync(std::
     } catch (const std::exception& e) { error_msg = e.what(); }
       catch (...) { error_msg = "Unknown error occurred"; }
 
-    co_await ui_thread_;
-    result->Error("getSystemDevices", error_msg);
+    if (!error_msg.empty()) {
+        co_await ui_thread_;
+        result->Error("getSystemDevices", error_msg);
+    }
 }
 
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetAdapterStateAsync(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -676,8 +676,10 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetAdapterStateAsync(std::u
     } catch (const std::exception& e) { error_msg = e.what(); }
       catch (...) { error_msg = "Unknown error occurred"; }
 
-    co_await ui_thread_;
-    result->Error("getAdapterState", error_msg);
+    if (!error_msg.empty()) {
+        co_await ui_thread_;
+        result->Error("getAdapterState", error_msg);
+    }
 }
 
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
@@ -747,8 +749,10 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
     } catch (const std::exception& e) { error_msg = e.what(); }
       catch (...) { error_msg = "Unknown error occurred"; }
 
-    co_await ui_thread_;
-    result->Error("connect", error_msg);
+    if (!error_msg.empty()) {
+        co_await ui_thread_;
+        result->Error("connect", error_msg);
+    }
 }
 
 std::string FlutterBluePlusWindowsPlugin::uint64_to_mac_string(uint64_t addr) {
@@ -819,7 +823,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
                      serviceMap[flutter::EncodableValue("characteristics")] = *charsList;
                      servicesList.push_back(serviceMap);
 
-                     auto includedResult = co_await service.GetIncludedServicesAsync(BluetoothCacheMode::Uncached);
+                     auto includedResult = co_await service.GetIncludedServicesAsync(BluetoothCacheMode::Cached);
                      if (includedResult.Status() == GattCommunicationStatus::Success) {
                          for (auto includedService : includedResult.Services()) {
                              flutter::EncodableMap includedMap;
@@ -849,23 +853,26 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
     } catch (const std::exception& e) { error_msg = e.what(); }
       catch (...) { error_msg = "Unknown error"; }
     
+    if (error_msg.empty()) error_msg = "Unknown error";
     co_await ui_thread_;
     result_ptr->Error("discoverServices", error_msg);
 }
 
 void FlutterBluePlusWindowsPlugin::OnCharacteristicValueChanged(std::string remote_id, const GattCharacteristic& sender, const GattValueChangedEventArgs& args) {
     [this, remote_id, sender, args]() -> winrt::fire_and_forget {
-        co_await ui_thread_;
-        flutter::EncodableMap response;
-        response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-        response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(utils::to_uuid_string(sender.Service().Uuid()));
-        response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(utils::to_uuid_string(sender.Uuid()));
-        response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(static_cast<int32_t>(sender.AttributeHandle()));
-        response[flutter::EncodableValue("value")] = flutter::EncodableValue(utils::to_vector(args.CharacteristicValue()));
-        response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
-        response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
-        response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
-        channel_->InvokeMethod("OnCharacteristicReceived", std::make_unique<flutter::EncodableValue>(response));
+        try {
+            co_await ui_thread_;
+            flutter::EncodableMap response;
+            response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+            response[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(utils::to_uuid_string(sender.Service().Uuid()));
+            response[flutter::EncodableValue("characteristic_uuid")] = flutter::EncodableValue(utils::to_uuid_string(sender.Uuid()));
+            response[flutter::EncodableValue("instance_id")] = flutter::EncodableValue(static_cast<int32_t>(sender.AttributeHandle()));
+            response[flutter::EncodableValue("value")] = flutter::EncodableValue(utils::to_vector(args.CharacteristicValue()));
+            response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
+            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
+            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
+            channel_->InvokeMethod("OnCharacteristicReceived", std::make_unique<flutter::EncodableValue>(response));
+        } catch(...) {}
     }();
 }
 
@@ -1271,14 +1278,23 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(const flutter::MethodCall<fl
     if (method == "readRssi") {
         const auto* remote_id_arg = std::get_if<std::string>(method_call.arguments());
         if (remote_id_arg) {
-            flutter::EncodableMap rssi_update;
-            rssi_update[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(*remote_id_arg);
-            auto it = rssi_cache_.find(*remote_id_arg);
+            std::string remote_id = *remote_id_arg;
+            flutter::EncodableMap rssi_result;
+            rssi_result[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+            rssi_result[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
+            rssi_result[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
+            
+            auto it = rssi_cache_.find(remote_id);
             if (it != rssi_cache_.end()) {
-                rssi_update[flutter::EncodableValue("rssi")] = flutter::EncodableValue(it->second);
-                rssi_update[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
-            } else { rssi_update[flutter::EncodableValue("success")] = flutter::EncodableValue(0); }
-            channel_->InvokeMethod("OnReadRssi", std::make_unique<flutter::EncodableValue>(rssi_update));
+                rssi_result[flutter::EncodableValue("rssi")] = flutter::EncodableValue(it->second);
+                rssi_result[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
+            } else {
+                rssi_result[flutter::EncodableValue("rssi")] = flutter::EncodableValue(0);
+                rssi_result[flutter::EncodableValue("success")] = flutter::EncodableValue(0);
+                rssi_result[flutter::EncodableValue("error_code")] = flutter::EncodableValue(1);
+                rssi_result[flutter::EncodableValue("error_string")] = flutter::EncodableValue("RSSI not cached");
+            }
+            channel_->InvokeMethod("OnReadRssi", std::make_unique<flutter::EncodableValue>(rssi_result));
             result->Success(flutter::EncodableValue(true));
         } else result->Error("readRssi", "Invalid arguments");
         return;
