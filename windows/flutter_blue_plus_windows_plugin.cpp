@@ -935,6 +935,12 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(std::sh
                             status = writeResult.Status();
                         }
                     }
+
+                    // Special handling for Service Changed characteristic (0x2A05) - ignore access denied errors
+                    if (status != GattCommunicationStatus::Success && actual_char_uuid == "2a05") {
+                        status = GattCommunicationStatus::Success;
+                    }
+
                     if (status == GattCommunicationStatus::Success) {
                         co_await ui_thread_;
                         auto it = subscribed_characteristics_.find(token_key);
@@ -951,7 +957,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(std::sh
                 } else {
                     return_value = {0x00, 0x00};
                     GattCommunicationStatus status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None);
-                    if (status == GattCommunicationStatus::Success) {
+                    if (status == GattCommunicationStatus::Success || actual_char_uuid == "2a05") {
                         co_await ui_thread_;
                         auto it = subscribed_characteristics_.find(token_key);
                         if (it != subscribed_characteristics_.end()) {
