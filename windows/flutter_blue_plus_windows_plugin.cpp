@@ -793,7 +793,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
         BluetoothLEDevice device = nullptr;
         { auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(), [&](const auto& pair) { return pair.first == remote_id; });
           if (it != connected_devices_.end()) device = it->second.as<BluetoothLEDevice>(); }
-        if (!device) { error_msg = "device is disconnected"; goto send_error; }
+        if (!device) { result_ptr->Error("discoverServices", "device is disconnected"); co_return; }
 
         co_await winrt::resume_background();
         auto servicesResult = co_await device.GetGattServicesAsync(BluetoothCacheMode::Uncached);
@@ -1256,7 +1256,7 @@ void FlutterBluePlusWindowsPlugin::HandleMethodCall(const flutter::MethodCall<fl
         if (args) WriteDescriptorAsync(*args, std::move(result)); else result->Error("writeDescriptor", "Invalid arguments");
         return;
     }
-    if (method == "setLogLevel") { result->Success(flutter::EncodableValue(0)); return; }
+    if (method == "setLogLevel") { result->Success(flutter::EncodableValue(true)); return; }
     if (method == "connectedCount") { result->Success(flutter::EncodableValue(static_cast<int>(connected_devices_.size()))); return; }
     if (method == "readRssi") {
         const auto* remote_id_arg = std::get_if<std::string>(method_call.arguments());
