@@ -19,7 +19,7 @@
 namespace flutter_blue_plus_windows {
 
 struct SubscribedCharacteristic {
-    winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic characteristic = nullptr;
+    winrt::Windows::Foundation::IInspectable characteristic = nullptr;
     winrt::event_token token;
 };
 
@@ -52,17 +52,14 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   // UI Thread context
   winrt::apartment_context ui_thread_;
 
-  // Using vector of pairs to avoid std::map issues with non-default-constructible WinRT types
   std::vector<std::pair<std::string, winrt::Windows::Foundation::IInspectable>> connected_devices_{};
   std::vector<std::pair<std::string, winrt::Windows::Foundation::IInspectable>> currently_connecting_devices_{};
   std::map<std::string, int32_t> rssi_cache_{};
   
-  // Use explicit types to avoid dependency on typedef availability in headers
   std::map<std::string, std::map<flutter::EncodableValue, flutter::EncodableValue>> scan_results_cache_{};
 
-  // Map to store event tokens and characteristic objects for notifications
-  // Key: remote_id:service_uuid:char_uuid:instance_id
   std::map<std::string, SubscribedCharacteristic> subscribed_characteristics_{};
+  std::map<std::string, winrt::Windows::Foundation::IInspectable> characteristic_cache_{};
 
   void OnAdvertisementReceived(
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher&,
@@ -73,6 +70,9 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcherStoppedEventArgs&);
   
   winrt::fire_and_forget GetSystemDevicesAsync(
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+  winrt::fire_and_forget GetAdapterStateAsync(
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   winrt::fire_and_forget ConnectAsync(
@@ -114,6 +114,57 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   winrt::fire_and_forget PeriodicConnectionCheck();
 
   std::string uint64_to_mac_string(uint64_t addr);
+
+  // --- Private GATT Helpers ---
+  winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic> 
+  GetCharacteristicInternalAsync(
+      winrt::Windows::Devices::Bluetooth::BluetoothLEDevice device,
+      std::string remote_id,
+      std::string service_uuid_str,
+      std::string characteristic_uuid_str,
+      std::string primary_service_uuid_str,
+      int instance_id);
+
+  winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic> 
+  GetCharacteristicByHandleAsync(
+      winrt::Windows::Devices::Bluetooth::BluetoothLEDevice device,
+      int instance_id);
+
+  winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic> 
+  GetCharacteristicAsync(
+      winrt::Windows::Devices::Bluetooth::BluetoothLEDevice device,
+      std::string service_uuid_str,
+      std::string characteristic_uuid_str,
+      std::string primary_service_uuid_str,
+      int instance_id);
+
+  winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic> 
+  FindCharacteristicInServiceAsync(
+      winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattDeviceService service,
+      int instance_id,
+      winrt::Windows::Devices::Bluetooth::BluetoothCacheMode cacheMode);
+
+  winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic> 
+  FindCharacteristicByDescriptorHandleInServiceAsync(
+      winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattDeviceService service,
+      int descriptor_handle,
+      winrt::Windows::Devices::Bluetooth::BluetoothCacheMode cacheMode);
+
+  winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic> 
+  GetCharacteristicByDescriptorHandleAsync(
+      winrt::Windows::Devices::Bluetooth::BluetoothLEDevice device,
+      int descriptor_handle);
+
+  winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattDescriptor> 
+  GetDescriptorAsync(
+      winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic characteristic,
+      std::string descriptor_uuid_str);
+
+  winrt::Windows::Foundation::IAsyncAction PopulateCharacteristicsAsync(
+      winrt::Windows::Devices::Bluetooth::GenericAttributeProfile::GattDeviceService service,
+      std::string remote_id,
+      std::string primaryServiceUuid,
+      std::shared_ptr<flutter::EncodableList> outList);
 };
 
 }  // namespace flutter_blue_plus_windows
