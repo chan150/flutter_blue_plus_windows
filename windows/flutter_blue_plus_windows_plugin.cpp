@@ -727,9 +727,11 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
                  auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(),
                     [&](const auto& pair) { return pair.first == remote_id; });
                  if (it_connected == connected_devices_.end()) connected_devices_.emplace_back(remote_id, device);
-                 auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
-                        [&](const auto& pair) { return pair.first == remote_id; });
-                 if (it_connecting != currently_connecting_devices_.end()) currently_connecting_devices_.erase(it_connecting);
+                 
+                 // Safe removal from currently_connecting_devices_
+                 currently_connecting_devices_.erase(std::remove_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(),
+                        [&](const auto& pair) { return pair.first == remote_id; }), currently_connecting_devices_.end());
+
                  flutter::EncodableMap connection_state;
                  connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
                  connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1);
@@ -777,19 +779,36 @@ void FlutterBluePlusWindowsPlugin::OnConnectionStatusChanged(const BluetoothLEDe
         connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
 
         if (d.ConnectionStatus() == BluetoothConnectionStatus::Connected) {
+             bool solicited = false;
              auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(), [&](const auto& pair) { return pair.first == remote_id; });
-             if (it_connected == connected_devices_.end()) {
+             if (it_connected != connected_devices_.end()) {
+                  solicited = true;
+             } else {
                   auto it_connecting = std::find_if(currently_connecting_devices_.begin(), currently_connecting_devices_.end(), [&](const auto& pair) { return pair.first == remote_id; });
                   if(it_connecting != currently_connecting_devices_.end()) {
                        connected_devices_.emplace_back(remote_id, d);
                        currently_connecting_devices_.erase(it_connecting);
+                       solicited = true;
                   }
              }
-            connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1);
-            channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
+
+             if (solicited) {
+                connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1);
+                channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
+             } else {
+                Log("Unsolicited connection for %s, closing to prevent unintended auto-reconnect.", remote_id.c_str());
+                try { d.Close(); } catch(...) {}
+             }
         } else {
-            auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(), [&](const auto& pair) { return pair.first == remote_id; });
-            if (it_connected != connected_devices_.end()) connected_devices_.erase(it_connected);
+            // Safe removal of disconnected device using remote_id based filtering
+            connected_devices_.erase(std::remove_if(connected_devices_.begin(), connected_devices_.end(),
+                [&](const auto& pair) { 
+                    if (pair.first == remote_id) {
+                        try { if (pair.second) pair.second.as<BluetoothLEDevice>().Close(); } catch(...) {}
+                        return true;
+                    }
+                    return false;
+                }), connected_devices_.end());
             
             // Clear cache for this device
             for (auto it = characteristic_cache_.begin(); it != characteristic_cache_.end(); ) {
@@ -1116,11 +1135,18 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ReadDescriptorAsync(flutter
             co_await winrt::resume_background();
 
             GattDescriptor targetDesc = nullptr;
-            // First try finding by handle if instance_id is provided
             if (instance_id != 0) {
-                // In Populate Characteristics we set descriptor instanceId to parent characteristic handle.
-                // We should search for descriptor inside that characteristic.
-                GattCharacteristic targetChar = co_await this->GetCharacteristicInternalAsync(device, remote_id, service_uuid_hint, characteristic_uuid_hint, primary_service_uuid_str, instance_id);
+                std::string d_key = remote_id + ":" + std::to_string(instance_id);
+                auto it_d = descriptor_cache_.find(d_key);
+                if (it_d != descriptor_cache_.end()) targetDesc = it_d->second.as<GattDescriptor>();
+            }
+
+            if (!targetDesc) {
+                GattCharacteristic targetChar = co_await this->GetCharacteristicByDescriptorHandleAsync(device, instance_id);
+                if (!targetChar) {
+                    targetChar = co_await this->GetCharacteristicInternalAsync(device, remote_id, service_uuid_hint, characteristic_uuid_hint, primary_service_uuid_str, instance_id);
+                }
+
                 if (targetChar) {
                     targetDesc = co_await GetDescriptorAsync(targetChar, descriptor_uuid_hint);
                 }
@@ -1179,6 +1205,12 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::WriteDescriptorAsync(flutte
             
             GattDescriptor targetDesc = nullptr;
             if (instance_id != 0) {
+                std::string d_key = remote_id + ":" + std::to_string(instance_id);
+                auto it_d = descriptor_cache_.find(d_key);
+                if (it_d != descriptor_cache_.end()) targetDesc = it_d->second.as<GattDescriptor>();
+            }
+
+            if (!targetDesc) {
                 GattCharacteristic targetChar = co_await this->GetCharacteristicInternalAsync(device, remote_id, service_uuid_hint, characteristic_uuid_hint, primary_service_uuid_str, instance_id);
                 if (targetChar) {
                     targetDesc = co_await GetDescriptorAsync(targetChar, descriptor_uuid_hint);
@@ -1230,6 +1262,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::PeriodicConnectionCheck() {
             bool is_connected = false;
             try { if (device) is_connected = (device.ConnectionStatus() == BluetoothConnectionStatus::Connected); } catch (...) {}
             if (!is_connected) {
+                Log("PeriodicCheck: Device %s disconnected, closing resource.", remote_id.c_str());
                 if (channel_) {
                     flutter::EncodableMap connection_state;
                     connection_state[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
