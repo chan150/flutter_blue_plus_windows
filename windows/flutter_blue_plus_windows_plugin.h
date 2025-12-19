@@ -58,8 +58,12 @@ class FlutterBluePlusWindowsPlugin : public flutter::Plugin {
   
   std::map<std::string, std::map<flutter::EncodableValue, flutter::EncodableValue>> scan_results_cache_{};
 
+  // Map to store event tokens and characteristic objects for notifications
   std::map<std::string, SubscribedCharacteristic> subscribed_characteristics_{};
+
+  // Caches for GATT objects to avoid repeated discovery
   std::map<std::string, winrt::Windows::Foundation::IInspectable> characteristic_cache_{};
+  std::map<std::string, winrt::Windows::Foundation::IInspectable> descriptor_cache_{};
 
   void OnAdvertisementReceived(
       const winrt::Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher&,
