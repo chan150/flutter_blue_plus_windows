@@ -143,23 +143,24 @@ FlutterBluePlusWindowsPlugin::FindCharacteristicInServiceAsync(
     int instance_id,
     BluetoothCacheMode cacheMode)
 {
-    auto charsResult = co_await service.GetCharacteristicsAsync(cacheMode);
-    if (charsResult.Status() == GattCommunicationStatus::Success) {
-        for (auto c : charsResult.Characteristics()) {
-            if (instance_id != 0 && static_cast<int32_t>(c.AttributeHandle()) == instance_id) {
-                co_return c;
+    try {
+        auto charsResult = co_await service.GetCharacteristicsAsync(cacheMode);
+        if (charsResult.Status() == GattCommunicationStatus::Success) {
+            for (auto c : charsResult.Characteristics()) {
+                if (instance_id != 0 && static_cast<int32_t>(c.AttributeHandle()) == instance_id) {
+                    co_return c;
+                }
             }
         }
-    }
 
-    auto includedResult = co_await service.GetIncludedServicesAsync(cacheMode);
-    if (includedResult.Status() == GattCommunicationStatus::Success) {
-        for (auto includedService : includedResult.Services()) {
-            auto c = co_await FindCharacteristicInServiceAsync(includedService, instance_id, cacheMode);
-            if (c) co_return c;
+        auto includedResult = co_await service.GetIncludedServicesAsync(cacheMode);
+        if (includedResult.Status() == GattCommunicationStatus::Success) {
+            for (auto includedService : includedResult.Services()) {
+                auto c = co_await FindCharacteristicInServiceAsync(includedService, instance_id, cacheMode);
+                if (c) co_return c;
+            }
         }
-    }
-
+    } catch (...) {}
     co_return nullptr;
 }
 
@@ -171,28 +172,29 @@ FlutterBluePlusWindowsPlugin::FindCharacteristicByDescriptorHandleInServiceAsync
 {
     if (descriptor_handle == 0) co_return nullptr;
 
-    auto charsResult = co_await service.GetCharacteristicsAsync(cacheMode);
-    if (charsResult.Status() == GattCommunicationStatus::Success) {
-        for (auto c : charsResult.Characteristics()) {
-             auto descResult = co_await c.GetDescriptorsAsync(cacheMode);
-             if (descResult.Status() == GattCommunicationStatus::Success) {
-                 for (auto d : descResult.Descriptors()) {
-                     if (static_cast<int32_t>(d.AttributeHandle()) == descriptor_handle) {
-                         co_return c;
+    try {
+        auto charsResult = co_await service.GetCharacteristicsAsync(cacheMode);
+        if (charsResult.Status() == GattCommunicationStatus::Success) {
+            for (auto c : charsResult.Characteristics()) {
+                 auto descResult = co_await c.GetDescriptorsAsync(cacheMode);
+                 if (descResult.Status() == GattCommunicationStatus::Success) {
+                     for (auto d : descResult.Descriptors()) {
+                         if (static_cast<int32_t>(d.AttributeHandle()) == descriptor_handle) {
+                             co_return c;
+                         }
                      }
                  }
-             }
+            }
         }
-    }
 
-    auto includedResult = co_await service.GetIncludedServicesAsync(cacheMode);
-    if (includedResult.Status() == GattCommunicationStatus::Success) {
-        for (auto includedService : includedResult.Services()) {
-            auto c = co_await FindCharacteristicByDescriptorHandleInServiceAsync(includedService, descriptor_handle, cacheMode);
-            if (c) co_return c;
+        auto includedResult = co_await service.GetIncludedServicesAsync(cacheMode);
+        if (includedResult.Status() == GattCommunicationStatus::Success) {
+            for (auto includedService : includedResult.Services()) {
+                auto c = co_await FindCharacteristicByDescriptorHandleInServiceAsync(includedService, descriptor_handle, cacheMode);
+                if (c) co_return c;
+            }
         }
-    }
-
+    } catch (...) {}
     co_return nullptr;
 }
 
@@ -357,7 +359,11 @@ FlutterBluePlusWindowsPlugin::PopulateCharacteristicsAsync(
     std::string primaryServiceUuid,
     std::shared_ptr<flutter::EncodableList> outList)
 {
-    auto charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
+    // Use Cached mode first for characteristics to speed up discovery
+    auto charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Cached);
+    if (charsResult.Status() != GattCommunicationStatus::Success || charsResult.Characteristics().Size() == 0) {
+        charsResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
+    }
 
     if (charsResult.Status() == GattCommunicationStatus::Success) {
         for (auto characteristic : charsResult.Characteristics()) {
@@ -391,7 +397,12 @@ FlutterBluePlusWindowsPlugin::PopulateCharacteristicsAsync(
 
             charMap[flutter::EncodableValue("properties")] = propsMap;
 
-            auto descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Uncached);
+            // Use Cached for descriptors during mass discovery to avoid catastrophic performance issues
+            auto descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Cached);
+            if (descResult.Status() != GattCommunicationStatus::Success) {
+                 descResult = co_await characteristic.GetDescriptorsAsync(BluetoothCacheMode::Uncached);
+            }
+
             flutter::EncodableList descList;
             if (descResult.Status() == GattCommunicationStatus::Success) {
                 for (auto descriptor : descResult.Descriptors()) {
@@ -631,13 +642,12 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetSystemDevicesAsync(std::
         response[flutter::EncodableValue("devices")] = deviceList;
         co_await ui_thread_;
         result->Success(flutter::EncodableValue(response));
+        co_return;
     } catch (const std::exception& e) { error_msg = e.what(); }
       catch (...) { error_msg = "Unknown error occurred"; }
 
-    if (!error_msg.empty()) {
-        co_await ui_thread_;
-        result->Error("getSystemDevices", error_msg);
-    }
+    co_await ui_thread_;
+    result->Error("getSystemDevices", error_msg);
 }
 
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetAdapterStateAsync(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -662,13 +672,12 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::GetAdapterStateAsync(std::u
 
         co_await ui_thread_;
         result->Success(flutter::EncodableValue(response));
+        co_return;
     } catch (const std::exception& e) { error_msg = e.what(); }
       catch (...) { error_msg = "Unknown error occurred"; }
 
-    if (!error_msg.empty()) {
-        co_await ui_thread_;
-        result->Error("getAdapterState", error_msg);
-    }
+    co_await ui_thread_;
+    result->Error("getAdapterState", error_msg);
 }
 
 winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
@@ -716,6 +725,7 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
                  connection_state[flutter::EncodableValue("connection_state")] = flutter::EncodableValue(1);
                  channel_->InvokeMethod("OnConnectionStateChanged", std::make_unique<flutter::EncodableValue>(connection_state));
                  result->Success(flutter::EncodableValue(true));
+                 co_return;
             } else {
                  co_await ui_thread_;
                  auto it_connected = std::find_if(connected_devices_.begin(), connected_devices_.end(),
@@ -737,10 +747,8 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::ConnectAsync(
     } catch (const std::exception& e) { error_msg = e.what(); }
       catch (...) { error_msg = "Unknown error occurred"; }
 
-    if (!error_msg.empty()) {
-        co_await ui_thread_;
-        result->Error("connect", error_msg);
-    }
+    co_await ui_thread_;
+    result->Error("connect", error_msg);
 }
 
 std::string FlutterBluePlusWindowsPlugin::uint64_to_mac_string(uint64_t addr) {
@@ -793,54 +801,54 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::DiscoverServicesAsync(
         BluetoothLEDevice device = nullptr;
         { auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(), [&](const auto& pair) { return pair.first == remote_id; });
           if (it != connected_devices_.end()) device = it->second.as<BluetoothLEDevice>(); }
-        if (!device) { result_ptr->Error("discoverServices", "device is disconnected"); co_return; }
+        if (!device) { error_msg = "device is disconnected"; }
+        else {
+            co_await winrt::resume_background();
+            auto servicesResult = co_await device.GetGattServicesAsync(BluetoothCacheMode::Uncached);
+            if (servicesResult.Status() != GattCommunicationStatus::Success) {
+                 error_msg = "GetGattServicesAsync failed";
+            } else {
+                flutter::EncodableList servicesList;
+                for (auto service : servicesResult.Services()) {
+                     flutter::EncodableMap serviceMap;
+                     std::string serviceUuid = utils::to_uuid_string(service.Uuid());
+                     serviceMap[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+                     serviceMap[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(serviceUuid);
+                     auto charsList = std::make_shared<flutter::EncodableList>();
+                     co_await PopulateCharacteristicsAsync(service, remote_id, "", charsList);
+                     serviceMap[flutter::EncodableValue("characteristics")] = *charsList;
+                     servicesList.push_back(serviceMap);
 
-        co_await winrt::resume_background();
-        auto servicesResult = co_await device.GetGattServicesAsync(BluetoothCacheMode::Uncached);
-        if (servicesResult.Status() != GattCommunicationStatus::Success) {
-             error_msg = "GetGattServicesAsync failed";
-        } else {
-            flutter::EncodableList servicesList;
-            for (auto service : servicesResult.Services()) {
-                 flutter::EncodableMap serviceMap;
-                 std::string serviceUuid = utils::to_uuid_string(service.Uuid());
-                 serviceMap[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-                 serviceMap[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(serviceUuid);
-                 auto charsList = std::make_shared<flutter::EncodableList>();
-                 co_await PopulateCharacteristicsAsync(service, remote_id, "", charsList);
-                 serviceMap[flutter::EncodableValue("characteristics")] = *charsList;
-                 servicesList.push_back(serviceMap);
-
-                 auto includedResult = co_await service.GetIncludedServicesAsync(BluetoothCacheMode::Uncached);
-                 if (includedResult.Status() == GattCommunicationStatus::Success) {
-                     for (auto includedService : includedResult.Services()) {
-                         flutter::EncodableMap includedMap;
-                         std::string includedUuid = utils::to_uuid_string(includedService.Uuid());
-                         includedMap[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-                         includedMap[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(includedUuid);
-                         includedMap[flutter::EncodableValue("primary_service_uuid")] = flutter::EncodableValue(serviceUuid);
-                         auto includedCharsList = std::make_shared<flutter::EncodableList>();
-                         co_await PopulateCharacteristicsAsync(includedService, remote_id, serviceUuid, includedCharsList);
-                         includedMap[flutter::EncodableValue("characteristics")] = *includedCharsList;
-                         servicesList.push_back(includedMap);
+                     auto includedResult = co_await service.GetIncludedServicesAsync(BluetoothCacheMode::Uncached);
+                     if (includedResult.Status() == GattCommunicationStatus::Success) {
+                         for (auto includedService : includedResult.Services()) {
+                             flutter::EncodableMap includedMap;
+                             std::string includedUuid = utils::to_uuid_string(includedService.Uuid());
+                             includedMap[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+                             includedMap[flutter::EncodableValue("service_uuid")] = flutter::EncodableValue(includedUuid);
+                             includedMap[flutter::EncodableValue("primary_service_uuid")] = flutter::EncodableValue(serviceUuid);
+                             auto includedCharsList = std::make_shared<flutter::EncodableList>();
+                             co_await PopulateCharacteristicsAsync(includedService, remote_id, serviceUuid, includedCharsList);
+                             includedMap[flutter::EncodableValue("characteristics")] = *includedCharsList;
+                             servicesList.push_back(includedMap);
+                         }
                      }
-                 }
+                }
+                flutter::EncodableMap response;
+                response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
+                response[flutter::EncodableValue("services")] = servicesList;
+                response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
+                response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
+                response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
+                co_await ui_thread_;
+                channel_->InvokeMethod("OnDiscoveredServices", std::make_unique<flutter::EncodableValue>(response));
+                result_ptr->Success(flutter::EncodableValue(true));
+                co_return;
             }
-            flutter::EncodableMap response;
-            response[flutter::EncodableValue("remote_id")] = flutter::EncodableValue(remote_id);
-            response[flutter::EncodableValue("services")] = servicesList;
-            response[flutter::EncodableValue("success")] = flutter::EncodableValue(1);
-            response[flutter::EncodableValue("error_code")] = flutter::EncodableValue(0);
-            response[flutter::EncodableValue("error_string")] = flutter::EncodableValue("GATT_SUCCESS");
-            co_await ui_thread_;
-            channel_->InvokeMethod("OnDiscoveredServices", std::make_unique<flutter::EncodableValue>(response));
-            result_ptr->Success(flutter::EncodableValue(true));
-            co_return;
         }
     } catch (const std::exception& e) { error_msg = e.what(); }
       catch (...) { error_msg = "Unknown error"; }
-
-send_error:
+    
     co_await ui_thread_;
     result_ptr->Error("discoverServices", error_msg);
 }
@@ -889,62 +897,64 @@ winrt::fire_and_forget FlutterBluePlusWindowsPlugin::SetNotifyValueAsync(std::sh
         { auto it = std::find_if(connected_devices_.begin(), connected_devices_.end(), [&](const auto& pair) { return pair.first == remote_id; });
           if (it != connected_devices_.end()) device = it->second.as<BluetoothLEDevice>(); }
         co_await winrt::resume_background();
-        if (!device) { error_string = "Device not connected"; goto send_event; }
+        if (!device) { error_string = "Device not connected"; }
+        else {
+            targetChar = co_await this->GetCharacteristicInternalAsync(device, remote_id, service_uuid_hint, characteristic_uuid_hint, primary_service_uuid_str, instance_id);
+            if (!targetChar) { error_string = "Characteristic not found"; }
+            else {
+                actual_service_uuid = utils::to_uuid_string(targetChar.Service().Uuid());
+                actual_char_uuid = utils::to_uuid_string(targetChar.Uuid());
+                std::string token_key = remote_id + ":" + actual_service_uuid + ":" + actual_char_uuid + ":" + std::to_string(instance_id);
 
-        targetChar = co_await this->GetCharacteristicInternalAsync(device, remote_id, service_uuid_hint, characteristic_uuid_hint, primary_service_uuid_str, instance_id);
-        if (!targetChar) { error_string = "Characteristic not found"; goto send_event; }
+                if (enable) {
+                    GattClientCharacteristicConfigurationDescriptorValue cccdValue = GattClientCharacteristicConfigurationDescriptorValue::None;
+                    auto props = targetChar.CharacteristicProperties();
+                    bool canNotify = (static_cast<uint32_t>(props) & static_cast<uint32_t>(GattCharacteristicProperties::Notify)) != 0;
+                    bool canIndicate = (static_cast<uint32_t>(props) & static_cast<uint32_t>(GattCharacteristicProperties::Indicate)) != 0;
+                    if (force_indications && canIndicate) { cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Indicate; return_value = {0x02, 0x00}; }
+                    else if (canNotify) { cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Notify; return_value = {0x01, 0x00}; }
+                    else if (canIndicate) { cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Indicate; return_value = {0x02, 0x00}; }
+                    else { error_string = "Notify/Indicate not supported"; goto send_event; }
 
-        actual_service_uuid = utils::to_uuid_string(targetChar.Service().Uuid());
-        actual_char_uuid = utils::to_uuid_string(targetChar.Uuid());
-        std::string token_key = remote_id + ":" + actual_service_uuid + ":" + actual_char_uuid + ":" + std::to_string(instance_id);
-
-        if (enable) {
-            GattClientCharacteristicConfigurationDescriptorValue cccdValue = GattClientCharacteristicConfigurationDescriptorValue::None;
-            auto props = targetChar.CharacteristicProperties();
-            bool canNotify = (static_cast<uint32_t>(props) & static_cast<uint32_t>(GattCharacteristicProperties::Notify)) != 0;
-            bool canIndicate = (static_cast<uint32_t>(props) & static_cast<uint32_t>(GattCharacteristicProperties::Indicate)) != 0;
-            if (force_indications && canIndicate) { cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Indicate; return_value = {0x02, 0x00}; }
-            else if (canNotify) { cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Notify; return_value = {0x01, 0x00}; }
-            else if (canIndicate) { cccdValue = GattClientCharacteristicConfigurationDescriptorValue::Indicate; return_value = {0x02, 0x00}; }
-            else { error_string = "Notify/Indicate not supported"; goto send_event; }
-
-            GattCommunicationStatus status = GattCommunicationStatus::ProtocolError;
-            try { status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(cccdValue); } catch (...) {}
-            if (status != GattCommunicationStatus::Success) {
-                GattDescriptor cccdDescriptor = co_await GetDescriptorAsync(targetChar, "2902");
-                if (cccdDescriptor) {
-                    auto writer = winrt::Windows::Storage::Streams::DataWriter();
-                    writer.ByteOrder(winrt::Windows::Storage::Streams::ByteOrder::LittleEndian);
-                    writer.WriteUInt16((cccdValue == GattClientCharacteristicConfigurationDescriptorValue::Indicate) ? 2 : 1);
-                    auto writeResult = co_await cccdDescriptor.WriteValueWithResultAsync(writer.DetachBuffer());
-                    status = writeResult.Status();
+                    GattCommunicationStatus status = GattCommunicationStatus::ProtocolError;
+                    try { status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(cccdValue); } catch (...) {}
+                    if (status != GattCommunicationStatus::Success) {
+                        GattDescriptor cccdDescriptor = co_await GetDescriptorAsync(targetChar, "2902");
+                        if (cccdDescriptor) {
+                            auto writer = winrt::Windows::Storage::Streams::DataWriter();
+                            writer.ByteOrder(winrt::Windows::Storage::Streams::ByteOrder::LittleEndian);
+                            writer.WriteUInt16((cccdValue == GattClientCharacteristicConfigurationDescriptorValue::Indicate) ? 2 : 1);
+                            auto writeResult = co_await cccdDescriptor.WriteValueWithResultAsync(writer.DetachBuffer());
+                            status = writeResult.Status();
+                        }
+                    }
+                    if (status == GattCommunicationStatus::Success) {
+                        co_await ui_thread_;
+                        auto it = subscribed_characteristics_.find(token_key);
+                        if (it != subscribed_characteristics_.end()) {
+                            try { it->second.characteristic.as<GattCharacteristic>().ValueChanged(it->second.token); } catch(...) {}
+                            subscribed_characteristics_.erase(it);
+                        }
+                        auto token = targetChar.ValueChanged([this, remote_id](GattCharacteristic const& sender, GattValueChangedEventArgs const& args) {
+                            this->OnCharacteristicValueChanged(remote_id, sender, args);
+                        });
+                        subscribed_characteristics_[token_key] = { targetChar, token };
+                        success_event = true; error_string = "GATT_SUCCESS";
+                    } else error_string = "Write CCCD failed: " + std::to_string((int)status);
+                } else {
+                    return_value = {0x00, 0x00};
+                    GattCommunicationStatus status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None);
+                    if (status == GattCommunicationStatus::Success) {
+                        co_await ui_thread_;
+                        auto it = subscribed_characteristics_.find(token_key);
+                        if (it != subscribed_characteristics_.end()) {
+                            try { it->second.characteristic.as<GattCharacteristic>().ValueChanged(it->second.token); } catch(...) {}
+                            subscribed_characteristics_.erase(it);
+                        }
+                        success_event = true; error_string = "GATT_SUCCESS";
+                    } else error_string = "Disable CCCD failed";
                 }
             }
-            if (status == GattCommunicationStatus::Success) {
-                co_await ui_thread_;
-                auto it = subscribed_characteristics_.find(token_key);
-                if (it != subscribed_characteristics_.end()) {
-                    try { it->second.characteristic.as<GattCharacteristic>().ValueChanged(it->second.token); } catch(...) {}
-                    subscribed_characteristics_.erase(it);
-                }
-                auto token = targetChar.ValueChanged([this, remote_id](GattCharacteristic const& sender, GattValueChangedEventArgs const& args) {
-                    this->OnCharacteristicValueChanged(remote_id, sender, args);
-                });
-                subscribed_characteristics_[token_key] = { targetChar, token };
-                success_event = true; error_string = "GATT_SUCCESS";
-            } else error_string = "Write CCCD failed: " + std::to_string((int)status);
-        } else {
-             return_value = {0x00, 0x00};
-             GattCommunicationStatus status = co_await targetChar.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None);
-             if (status == GattCommunicationStatus::Success) {
-                co_await ui_thread_;
-                auto it = subscribed_characteristics_.find(token_key);
-                if (it != subscribed_characteristics_.end()) {
-                    try { it->second.characteristic.as<GattCharacteristic>().ValueChanged(it->second.token); } catch(...) {}
-                    subscribed_characteristics_.erase(it);
-                }
-                success_event = true; error_string = "GATT_SUCCESS";
-             } else error_string = "Disable CCCD failed";
         }
     } catch (const std::exception& ex) { error_string = ex.what(); }
       catch (...) { error_string = "Unknown Exception"; }
