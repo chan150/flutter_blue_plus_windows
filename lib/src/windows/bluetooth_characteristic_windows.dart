@@ -28,7 +28,8 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
                   serviceUuid: descriptor.serviceUuid,
                   characteristicUuid: descriptor.characteristicUuid,
                   descriptorUuid: descriptor.uuid,
-                  primaryServiceUuid: null, // TODO:  API changes
+                  primaryServiceUuid: null,
+                  instanceId: 0, // TODO:  API changes
                 ),
             ],
             properties: BmCharacteristicProperties(
@@ -46,7 +47,8 @@ class BluetoothCharacteristicWindows extends BluetoothCharacteristic {
               // TODO: implementation missing
               indicateEncryptionRequired: false,
             ),
-            primaryServiceUuid: null, // TODO:  API changes
+            primaryServiceUuid: null,
+            instanceId: 0, // TODO:  API changes
           ),
         );
 

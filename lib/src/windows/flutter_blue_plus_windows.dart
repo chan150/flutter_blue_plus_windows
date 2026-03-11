@@ -123,6 +123,15 @@ class FlutterBluePlusWindows {
   // TODO: compare with original lib
   static Stream<List<ScanResult>> get scanResults => _scanResultsList.stream;
 
+  static Stream<List<ScanResult>> get onScanResults {
+    if (isScanningNow) {
+      return _scanResultsList.stream;
+    } else {
+      // skip previous results & push empty list
+      return _scanResultsList.stream.skip(1).newStreamWithInitialValue([]);
+    }
+  }
+
   static Stream<BluetoothAdapterState> get adapterState async* {
     await _initialize();
     yield _state;

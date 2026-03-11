@@ -68,6 +68,11 @@ class FlutterBluePlus {
     return FBP.FlutterBluePlus.scanResults;
   }
 
+  static Stream<List<ScanResult>> get onScanResults {
+    if (Platform.isWindows) return FlutterBluePlusWindows.onScanResults;
+    return FBP.FlutterBluePlus.onScanResults;
+  }
+
   static bool get isScanningNow {
     if (Platform.isWindows) return FlutterBluePlusWindows.isScanningNow;
     return FBP.FlutterBluePlus.isScanningNow;
